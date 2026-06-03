@@ -11,7 +11,7 @@ export default function Turmas() {
 
   return (
     <Layout
-  onRefresh={atualizar}
+      onRefresh={atualizar}
       sidebar={
         <>
           <h2>Turmas</h2>
@@ -21,7 +21,7 @@ export default function Turmas() {
       }
     >
       <div className="grid">
-        {data.turmas.map((turma) => (
+        {data.turmas.map((turma: any) => (
           <EntityCard key={turma.nome} {...turma} />
         ))}
       </div>

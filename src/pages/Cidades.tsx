@@ -24,7 +24,7 @@ export default function Cidades() {
     >
       <div className="grid">
         {data.cidades.map(
-          cidade => (
+          (cidade:any) => (
             <EntityCard
               key={cidade.nome}
               {...cidade}

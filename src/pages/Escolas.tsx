@@ -27,7 +27,7 @@ export default function Escolas() {
       }
     >
       <div className="grid">
-        {data.escolas.map((escola) => (
+        {data.escolas.map((escola:any) => (
           <EntityCard
             key={escola.nome}
             {...escola}

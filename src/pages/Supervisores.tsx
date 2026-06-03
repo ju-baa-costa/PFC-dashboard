@@ -28,7 +28,7 @@ export default function Supervisores() {
     >
       <div className="grid">
         {data.supervisores.map(
-          (supervisor) => (
+          (supervisor:any) => (
             <SupervisorCard
               key={supervisor.nome}
               {...supervisor}

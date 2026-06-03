@@ -31,6 +31,9 @@ export default function SupervisorCard({
       <p>
         <strong>Alunos:</strong> {alunos}
       </p>
+      <p>
+        <strong>Cidades:</strong> {cidades}
+      </p>
 
       <p>
         <strong>Escolas:</strong> {escolas}
