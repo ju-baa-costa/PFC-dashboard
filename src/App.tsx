@@ -8,8 +8,7 @@ import Supervisores from "./pages/Supervisores";
 
 function App() {
   return (
-    <BrowserRouter>
-      <Routes>
+<BrowserRouter basename={import.meta.env.BASE_URL}>      <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/cidades" element={<Cidades />} />
         <Route path="/escolas" element={<Escolas />} />
