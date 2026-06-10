@@ -11,11 +11,15 @@ body {
 
 .header {
   height: 80px;
+  margin-bottom: 24px;
   background: white;
   display: flex;
   align-items: center;
   padding: 0 30px;
   border-bottom: 1px solid #ddd;
+  position: sticky;
+  top: 0;
+  z-index: 100;
 }
 
 .page-layout {
@@ -52,19 +56,30 @@ body {
   background: white;
   border-radius: 16px;
   padding: 20px;
-  border-left: 12px solid;
+  border-left: 12px solid transparent;
 }
 
 .entity-card.verde {
-  border-color: #22c55e;
+  border-left-color: #22c55e;
 }
 
 .entity-card.amarelo {
-  border-color: #eab308;
+  border-left-color: #eab308;
 }
 
 .entity-card.vermelho {
-  border-color: #ef4444;
+  border-left-color: #ef4444;
+}
+.card-verde {
+  border-left-color: #22c55e;
+}
+
+.card-amarelo {
+  border-left-color: #eab308;
+}
+
+.card-vermelho {
+  border-left-color: #ef4444;
 }
 .refresh-btn {
   margin-left: auto;
@@ -87,4 +102,8 @@ body {
 
 .home-btn:hover {
   opacity: 0.9;
+}
+.subList {
+  margin-top: 8px;
+  padding-left: 20px;
 }

@@ -16,11 +16,6 @@ export default function Cidades() {
   return (
     <Layout
   onRefresh={atualizar}
-      sidebar={
-        <h2>
-          Filtro de cidades
-        </h2>
-      }
     >
       <div className="grid">
         {data.cidades.map(

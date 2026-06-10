@@ -14,20 +14,6 @@ export default function Home() {
   return (
     <Layout
       onRefresh={atualizar}
-      sidebar={
-        <>
-          <h2>Resumo Geral</h2>
-
-          <p>Alunos: {data.resumo.alunos}</p>
-
-          <p>Ativos: {data.resumo.ativos}</p>
-
-          <p>Desligados: {data.resumo.desligados}</p>
-          <p>Última atualização:</p>
-
-          <p>{new Date(data.ultimaAtualizacao).toLocaleString("pt-BR")}</p>
-        </>
-      }
     >
       <div className="grid">
         <SummaryCard

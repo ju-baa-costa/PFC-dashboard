@@ -1,50 +1,79 @@
+import { getCardColor } from "../utils/cardColor";
+
 interface Props {
   nome: string;
-  cidade: string;
 
   alunos: number;
 
-  cidades: number;
-  escolas: number;
-  turmas: number;
+  cidades: string[];
+  escolas: string[];
+  turmas: string[];
 
   frequenciaMedia: number;
 }
 
 export default function SupervisorCard({
   nome,
-  cidade,
   alunos,
   cidades,
   escolas,
   turmas,
   frequenciaMedia,
 }: Props) {
-  return (
-    <div className="entity-card">
-      <h3>{nome}</h3>
+  const classeCor =
+    getCardColor(frequenciaMedia);
 
-      <p>
-        <strong>Cidade:</strong> {cidade}
-      </p>
+  return (
+    <div className={`entity-card ${classeCor}`}>
+      <h3>{nome}</h3>
 
       <p>
         <strong>Alunos:</strong> {alunos}
       </p>
-      <p>
-        <strong>Cidades:</strong> {cidades}
-      </p>
 
       <p>
-        <strong>Escolas:</strong> {escolas}
+        <strong>Cidade(s):</strong>
       </p>
 
-      <p>
-        <strong>Turmas:</strong> {turmas}
-      </p>
+      <ul className="subList">
+        {cidades.map((cidade) => (
+          <li key={cidade}>
+            {cidade}
+          </li>
+        ))}
+      </ul>
 
       <p>
-        <strong>Frequência:</strong> {frequenciaMedia}%
+        <strong>
+          Escolas ({escolas.length}):
+        </strong>
+      </p>
+
+      <ul className="subList">
+        {escolas.map((escola) => (
+          <li key={escola}>
+            {escola}
+          </li>
+        ))}
+      </ul>
+
+      <p>
+        <strong>
+          Turmas ({turmas.length}):
+        </strong>
+      </p>
+
+      <ul className="subList">
+        {turmas.map((turma) => (
+          <li key={turma}>
+            {turma}
+          </li>
+        ))}
+      </ul>
+
+      <p>
+        <strong>Frequência:</strong>{" "}
+        {frequenciaMedia.toFixed(1)}%
       </p>
     </div>
   );

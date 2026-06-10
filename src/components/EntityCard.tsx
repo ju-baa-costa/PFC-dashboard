@@ -5,6 +5,8 @@ interface Props {
   escola?: string;
   supervisor?: string;
 
+  supervisores?: string[];
+
   alunos: number;
 
   desligados?: number;
@@ -19,6 +21,7 @@ export default function EntityCard({
   cidade,
   escola,
   supervisor,
+  supervisores,
   alunos,
   desligados,
   percentualDesligados,
@@ -46,6 +49,16 @@ export default function EntityCard({
         </p>
       )}
 
+      {supervisores &&
+        supervisores.length > 0 && (
+          <p>
+            <strong>
+              Supervisores:
+            </strong>{" "}
+            {supervisores.join(", ")}
+          </p>
+      )}
+
       <p>
         <strong>Alunos:</strong> {alunos}
       </p>
@@ -58,7 +71,8 @@ export default function EntityCard({
 
       {percentualDesligados !== undefined && (
         <p>
-          <strong>Taxa:</strong> {percentualDesligados}%
+          <strong>Taxa de evasão:</strong>{" "}
+          {percentualDesligados}%
         </p>
       )}
     </div>

@@ -12,13 +12,6 @@ export default function Turmas() {
   return (
     <Layout
       onRefresh={atualizar}
-      sidebar={
-        <>
-          <h2>Turmas</h2>
-
-          <p>Total: {data.turmas.length}</p>
-        </>
-      }
     >
       <div className="grid">
         {data.turmas.map((turma: any) => (

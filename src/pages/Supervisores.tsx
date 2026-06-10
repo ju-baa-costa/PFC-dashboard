@@ -16,15 +16,6 @@ export default function Supervisores() {
   return (
     <Layout
   onRefresh={atualizar}
-      sidebar={
-        <>
-          <h2>Supervisores</h2>
-
-          <p>
-            Total: {data.supervisores.length}
-          </p>
-        </>
-      }
     >
       <div className="grid">
         {data.supervisores.map(

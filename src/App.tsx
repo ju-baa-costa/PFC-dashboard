@@ -8,16 +8,12 @@ import Supervisores from "./pages/Supervisores";
 
 function App() {
   return (
-    <BrowserRouter basename="/PFC-dashboard">
+    <BrowserRouter>
       <Routes>
         <Route path="/" element={<Home />} />
-
         <Route path="/cidades" element={<Cidades />} />
-
         <Route path="/escolas" element={<Escolas />} />
-
         <Route path="/turmas" element={<Turmas />} />
-
         <Route path="/supervisores" element={<Supervisores />} />
       </Routes>
     </BrowserRouter>

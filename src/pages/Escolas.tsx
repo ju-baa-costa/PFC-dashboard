@@ -16,15 +16,6 @@ export default function Escolas() {
   return (
     <Layout
   onRefresh={atualizar}
-      sidebar={
-        <>
-          <h2>Escolas</h2>
-
-          <p>
-            Total: {data.escolas.length}
-          </p>
-        </>
-      }
     >
       <div className="grid">
         {data.escolas.map((escola:any) => (
