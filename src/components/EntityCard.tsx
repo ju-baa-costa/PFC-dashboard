@@ -10,8 +10,9 @@ interface Props {
   alunos: number;
 
   desligados?: number;
-
-  percentualDesligados?: number;
+  alunosAtivos?: number;
+  vagas?: number;
+  taxaEvasao?: number;
 
   nivelAlerta?: string;
 }
@@ -24,7 +25,9 @@ export default function EntityCard({
   supervisores,
   alunos,
   desligados,
-  percentualDesligados,
+  alunosAtivos,
+  vagas,
+  taxaEvasao,
   nivelAlerta,
 }: Props) {
   return (
@@ -52,27 +55,42 @@ export default function EntityCard({
       {supervisores &&
         supervisores.length > 0 && (
           <p>
-            <strong>
-              Supervisores:
-            </strong>{" "}
+            <strong>Supervisores:</strong>{" "}
             {supervisores.join(", ")}
           </p>
-      )}
+        )}
 
-      <p>
-        <strong>Alunos:</strong> {alunos}
-      </p>
+      
 
       {desligados !== undefined && (
         <p>
-          <strong>Desligados:</strong> {desligados}
+          <strong>Alunos desligados:</strong>{" "}
+          {desligados}
         </p>
       )}
 
-      {percentualDesligados !== undefined && (
+      {alunosAtivos !== undefined && (
+        <p>
+          <strong>Alunos ativos:</strong>{" "}
+          {alunosAtivos}
+        </p>
+      )}
+      <p>
+        <strong>Alunos totais:</strong>{" "}
+        {alunos}
+      </p>
+
+      {vagas !== undefined && (
+        <p>
+          <strong>Vagas ofertadas na turma:</strong>{" "}
+          {vagas}
+        </p>
+      )}
+
+      {taxaEvasao !== undefined && (
         <p>
           <strong>Taxa de evasão:</strong>{" "}
-          {percentualDesligados}%
+          {taxaEvasao.toFixed(1)}%
         </p>
       )}
     </div>
