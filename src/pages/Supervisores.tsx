@@ -1,6 +1,8 @@
 import Layout from "../components/Layout";
 import SupervisorCard from "../components/SupervisorCard";
 import { useDashboard } from "../hooks/useDashboard";
+import { ordenarPorFrequencia } from "../utils/ordenacaoFreq";
+
 
 export default function Supervisores() {
   const {
@@ -18,14 +20,14 @@ export default function Supervisores() {
   onRefresh={atualizar}
     >
       <div className="grid">
-        {data.supervisores.map(
-          (supervisor:any) => (
-            <SupervisorCard
-              key={supervisor.nome}
-              {...supervisor}
-            />
-          )
-        )}
+        {ordenarPorFrequencia(data.supervisores).map(
+  (supervisor: any) => (
+    <SupervisorCard
+      key={supervisor.nome}
+      {...supervisor}
+    />
+  )
+)}
       </div>
     </Layout>
   );

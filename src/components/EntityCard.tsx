@@ -82,17 +82,31 @@ export default function EntityCard({
 
       {vagas !== undefined && (
         <p>
-          <strong>Vagas ofertadas na turma:</strong>{" "}
+          <strong>Vagas ofertadas:</strong>{" "}
           {vagas}
         </p>
       )}
 
-      {taxaEvasao !== undefined && (
-        <p>
-          <strong>Taxa de evasão:</strong>{" "}
-          {taxaEvasao.toFixed(1)}%
-        </p>
-      )}
+{taxaEvasao !== undefined && (
+  <p>
+    <strong>
+      Taxa de evasão
+      <span className="tooltip-container">
+        ℹ️
+
+        <span className="tooltip-text">
+          Calculado com base na quantidade de vagas disponibilizadas. <br/>
+          0% a 20% - Verde <br/>
+          21% a 40% - Laranja <br/>
+          61% a 100% - Vermelho
+        </span>
+      </span>
+      :
+    </strong>{" "}
+    {taxaEvasao}%
+  </p>
+)}
+      
     </div>
   );
 }

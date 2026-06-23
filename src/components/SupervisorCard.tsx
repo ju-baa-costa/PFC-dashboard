@@ -72,8 +72,20 @@ export default function SupervisorCard({
       </ul>
 
       <p>
-        <strong>Frequência:</strong>{" "}
-        {frequenciaMedia.toFixed(1)}%
+        <strong>Frequência
+        <span className="tooltip-container">
+        ℹ️
+
+        <span className="tooltip-text">
+          Frequência média de todos os alunos desse supervisor <br/>
+          80% a 100% - Verde <br/>
+          60% a 79% - Laranja <br/>
+          Abaixo de 60% - Vermelho
+        </span>
+      </span>
+      :
+        </strong>
+        {" "}{frequenciaMedia.toFixed(1)}%
       </p>
     </div>
   );

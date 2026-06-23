@@ -1,6 +1,7 @@
 import Layout from "../components/Layout";
 import EntityCard from "../components/EntityCard";
 import { useDashboard } from "../hooks/useDashboard";
+import { ordenarPorAlerta } from "../utils/ordenacaoAlerta"; 
 
 export default function Escolas() {
   const {
@@ -18,7 +19,7 @@ export default function Escolas() {
   onRefresh={atualizar}
     >
       <div className="grid">
-        {data.escolas.map((escola:any) => (
+        {ordenarPorAlerta(data.escolas).map((escola:any) => (
           <EntityCard
             key={escola.nome}
             {...escola}
