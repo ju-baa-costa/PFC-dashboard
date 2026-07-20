@@ -10,16 +10,30 @@ body {
 }
 
 .header {
-  height: 80px;
+  min-height: 80px;
   margin-bottom: 24px;
   background: white;
   display: flex;
   align-items: center;
-  padding: 0 30px;
+  flex-wrap: wrap;
+  gap: 12px 20px;
+  padding: 16px 30px;
   border-bottom: 1px solid #ddd;
   position: sticky;
   top: 0;
   z-index: 100;
+}
+
+.header h1 {
+  flex: 1 1 auto;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-left: auto;
 }
 
 .page-layout {
@@ -82,7 +96,6 @@ body {
   border-left-color: #ef4444;
 }
 .refresh-btn {
-  margin-left: auto;
   padding: 10px 18px;
   border: none;
   border-radius: 8px;
@@ -103,6 +116,25 @@ body {
 .home-btn:hover {
   opacity: 0.9;
 }
+.report-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.pdf-btn {
+  padding: 10px 18px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  cursor: pointer;
+  background: white;
+  white-space: nowrap;
+}
+
+.pdf-btn:hover {
+  opacity: 0.9;
+}
+
 .subList {
   margin-top: 8px;
   padding-left: 20px;

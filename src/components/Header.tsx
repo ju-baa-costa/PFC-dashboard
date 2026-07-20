@@ -3,12 +3,18 @@ import {
   useLocation,
 } from "react-router-dom";
 
+import ReportButtons from "./ReportButtons";
+
 interface Props {
   onRefresh?: () => void;
+  onRelatorioCompleto?: () => void;
+  onRelatorioResumido?: () => void;
 }
 
 export default function Header({
   onRefresh,
+  onRelatorioCompleto,
+  onRelatorioResumido,
 }: Props) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -46,12 +52,21 @@ export default function Header({
 
       <h1>{currentTitle}</h1>
 
-      <button
-        className="refresh-btn"
-        onClick={onRefresh}
-      >
-        Atualizar Dados
-      </button>
+      <div className="header-actions">
+        {onRelatorioCompleto && onRelatorioResumido && (
+          <ReportButtons
+            onCompleto={onRelatorioCompleto}
+            onResumido={onRelatorioResumido}
+          />
+        )}
+
+        <button
+          className="refresh-btn"
+          onClick={onRefresh}
+        >
+          Atualizar Dados
+        </button>
+      </div>
     </header>
   );
 }
