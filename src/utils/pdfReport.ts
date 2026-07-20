@@ -36,13 +36,112 @@ export function gerarRelatorioPDF(
   doc.save(nomeArquivo);
 }
 
+export interface SecaoRelatorio {
+  titulo: string;
+  itens: ItemRelatorio[];
+}
+
+const MARGEM_INFERIOR = 280;
+
+export function gerarRelatorioDetalhadoPDF(
+  titulo: string,
+  secoes: SecaoRelatorio[],
+  nomeArquivo: string
+) {
+  const doc = new jsPDF();
+  const dataGeracao = new Date().toLocaleString("pt-BR");
+
+  let y = 20;
+
+  doc.setFontSize(18);
+  doc.text(titulo, 14, y);
+
+  y += 8;
+  doc.setFontSize(10);
+  doc.setTextColor(120);
+  doc.text(`Gerado em ${dataGeracao}`, 14, y);
+  doc.setTextColor(0);
+
+  y += 14;
+
+  secoes.forEach((secao) => {
+    if (y > MARGEM_INFERIOR) {
+      doc.addPage();
+      y = 20;
+    }
+
+    doc.setFontSize(14);
+    doc.text(secao.titulo, 14, y);
+    y += 8;
+
+    doc.setFontSize(11);
+    secao.itens.forEach((item) => {
+      if (y > MARGEM_INFERIOR) {
+        doc.addPage();
+        y = 20;
+      }
+
+      doc.text(`${item.label}:`, 20, y);
+      doc.text(String(item.valor), 120, y);
+      y += 7;
+    });
+
+    y += 8;
+  });
+
+  doc.save(nomeArquivo);
+}
+
 interface EntidadeComMetricas {
+  nome?: string;
+  cidade?: string;
+  escola?: string;
   alunos?: number;
   alunosAtivos?: number;
   desligados?: number;
   vagas?: number;
   taxaEvasao?: number;
   nivelAlerta?: string;
+}
+
+export function montarSecoesEntidades(
+  itens: EntidadeComMetricas[]
+): SecaoRelatorio[] {
+  return [...itens]
+    .sort((a, b) => (a.nome ?? "").localeCompare(b.nome ?? "", "pt-BR"))
+    .map((item) => {
+      const linhas: ItemRelatorio[] = [];
+
+      if (item.cidade) linhas.push({ label: "Cidade", valor: item.cidade });
+      if (item.escola) linhas.push({ label: "Escola", valor: item.escola });
+
+      linhas.push({ label: "Alunos totais", valor: item.alunos ?? 0 });
+
+      if (item.alunosAtivos !== undefined) {
+        linhas.push({ label: "Alunos ativos", valor: item.alunosAtivos });
+      }
+
+      if (item.desligados !== undefined) {
+        linhas.push({ label: "Alunos desligados", valor: item.desligados });
+      }
+
+      if (item.vagas !== undefined) {
+        linhas.push({ label: "Vagas ofertadas", valor: item.vagas });
+      }
+
+      if (item.taxaEvasao !== undefined) {
+        linhas.push({
+          label: "Taxa de evasão",
+          valor: `${item.taxaEvasao}%`,
+        });
+      }
+
+      if (item.nivelAlerta) {
+        linhas.push({ label: "Nível de alerta", valor: item.nivelAlerta });
+      }
+
+      return { titulo: item.nome ?? "Sem nome", itens: linhas };
+    });
 }
 
 export interface AgregadoEntidades {
@@ -95,11 +194,45 @@ export function calcularAgregadoEntidades(
 }
 
 interface SupervisorComMetricas {
+  nome?: string;
   alunos?: number;
   cidades?: string[];
   escolas?: string[];
   turmas?: string[];
   frequenciaMedia?: number;
+}
+
+export function montarSecoesSupervisores(
+  itens: SupervisorComMetricas[]
+): SecaoRelatorio[] {
+  return [...itens]
+    .sort((a, b) => (a.nome ?? "").localeCompare(b.nome ?? "", "pt-BR"))
+    .map((item) => {
+      const linhas: ItemRelatorio[] = [
+        { label: "Alunos", valor: item.alunos ?? 0 },
+      ];
+
+      if (item.cidades?.length) {
+        linhas.push({ label: "Cidade(s)", valor: item.cidades.join(", ") });
+      }
+
+      if (item.escolas?.length) {
+        linhas.push({ label: "Escolas", valor: item.escolas.join(", ") });
+      }
+
+      if (item.turmas?.length) {
+        linhas.push({ label: "Turmas", valor: item.turmas.join(", ") });
+      }
+
+      if (item.frequenciaMedia !== undefined) {
+        linhas.push({
+          label: "Frequência média",
+          valor: `${item.frequenciaMedia.toFixed(1)}%`,
+        });
+      }
+
+      return { titulo: item.nome ?? "Sem nome", itens: linhas };
+    });
 }
 
 export interface AgregadoSupervisores {

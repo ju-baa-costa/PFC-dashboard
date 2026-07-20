@@ -5,6 +5,8 @@ import { ordenarPorAlerta } from "../utils/ordenacaoAlerta";
 import {
   calcularAgregadoEntidades,
   gerarRelatorioPDF,
+  gerarRelatorioDetalhadoPDF,
+  montarSecoesEntidades,
 } from "../utils/pdfReport";
 
 export default function Turmas() {
@@ -15,33 +17,9 @@ export default function Turmas() {
   }
 
   function gerarCompleto() {
-    const agregado = calcularAgregadoEntidades(data.turmas);
-
-    gerarRelatorioPDF(
+    gerarRelatorioDetalhadoPDF(
       "Relatório Completo - Turmas",
-      [
-        { label: "Turmas", valor: agregado.total },
-        { label: "Alunos totais", valor: agregado.totalAlunos },
-        { label: "Alunos ativos", valor: agregado.totalAlunosAtivos },
-        { label: "Alunos desligados", valor: agregado.totalDesligados },
-        { label: "Vagas ofertadas", valor: agregado.totalVagas },
-        {
-          label: "Taxa de evasão média",
-          valor:
-            agregado.taxaEvasaoMedia !== null
-              ? `${agregado.taxaEvasaoMedia.toFixed(1)}%`
-              : "N/A",
-        },
-        { label: "Turmas em alerta verde", valor: agregado.porAlerta.verde },
-        {
-          label: "Turmas em alerta amarelo",
-          valor: agregado.porAlerta.amarelo,
-        },
-        {
-          label: "Turmas em alerta vermelho",
-          valor: agregado.porAlerta.vermelho,
-        },
-      ],
+      montarSecoesEntidades(data.turmas),
       "relatorio-completo-turmas.pdf"
     );
   }

@@ -6,6 +6,8 @@ import { useDashboard } from "../hooks/useDashboard";
 import {
   calcularAgregadoEntidades,
   gerarRelatorioPDF,
+  gerarRelatorioDetalhadoPDF,
+  montarSecoesEntidades,
 } from "../utils/pdfReport";
 
 export default function Cidades() {
@@ -19,33 +21,9 @@ export default function Cidades() {
     return <h1>Carregando...</h1>;
 
   function gerarCompleto() {
-    const agregado = calcularAgregadoEntidades(data.cidades);
-
-    gerarRelatorioPDF(
+    gerarRelatorioDetalhadoPDF(
       "Relatório Completo - Cidades",
-      [
-        { label: "Cidades", valor: agregado.total },
-        { label: "Alunos totais", valor: agregado.totalAlunos },
-        { label: "Alunos ativos", valor: agregado.totalAlunosAtivos },
-        { label: "Alunos desligados", valor: agregado.totalDesligados },
-        { label: "Vagas ofertadas", valor: agregado.totalVagas },
-        {
-          label: "Taxa de evasão média",
-          valor:
-            agregado.taxaEvasaoMedia !== null
-              ? `${agregado.taxaEvasaoMedia.toFixed(1)}%`
-              : "N/A",
-        },
-        { label: "Cidades em alerta verde", valor: agregado.porAlerta.verde },
-        {
-          label: "Cidades em alerta amarelo",
-          valor: agregado.porAlerta.amarelo,
-        },
-        {
-          label: "Cidades em alerta vermelho",
-          valor: agregado.porAlerta.vermelho,
-        },
-      ],
+      montarSecoesEntidades(data.cidades),
       "relatorio-completo-cidades.pdf"
     );
   }

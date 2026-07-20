@@ -5,6 +5,8 @@ import { ordenarPorFrequencia } from "../utils/ordenacaoFreq";
 import {
   calcularAgregadoSupervisores,
   gerarRelatorioPDF,
+  gerarRelatorioDetalhadoPDF,
+  montarSecoesSupervisores,
 } from "../utils/pdfReport";
 
 
@@ -20,24 +22,9 @@ export default function Supervisores() {
   }
 
   function gerarCompleto() {
-    const agregado = calcularAgregadoSupervisores(data.supervisores);
-
-    gerarRelatorioPDF(
+    gerarRelatorioDetalhadoPDF(
       "Relatório Completo - Supervisores",
-      [
-        { label: "Supervisores", valor: agregado.total },
-        { label: "Alunos atendidos", valor: agregado.totalAlunos },
-        {
-          label: "Frequência média geral",
-          valor:
-            agregado.frequenciaMedia !== null
-              ? `${agregado.frequenciaMedia.toFixed(1)}%`
-              : "N/A",
-        },
-        { label: "Cidades atendidas", valor: agregado.cidadesAtendidas },
-        { label: "Escolas atendidas", valor: agregado.escolasAtendidas },
-        { label: "Turmas atendidas", valor: agregado.turmasAtendidas },
-      ],
+      montarSecoesSupervisores(data.supervisores),
       "relatorio-completo-supervisores.pdf"
     );
   }

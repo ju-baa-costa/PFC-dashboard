@@ -5,6 +5,8 @@ import { ordenarPorAlerta } from "../utils/ordenacaoAlerta";
 import {
   calcularAgregadoEntidades,
   gerarRelatorioPDF,
+  gerarRelatorioDetalhadoPDF,
+  montarSecoesEntidades,
 } from "../utils/pdfReport";
 
 export default function Escolas() {
@@ -19,33 +21,9 @@ export default function Escolas() {
   }
 
   function gerarCompleto() {
-    const agregado = calcularAgregadoEntidades(data.escolas);
-
-    gerarRelatorioPDF(
+    gerarRelatorioDetalhadoPDF(
       "Relatório Completo - Escolas",
-      [
-        { label: "Escolas", valor: agregado.total },
-        { label: "Alunos totais", valor: agregado.totalAlunos },
-        { label: "Alunos ativos", valor: agregado.totalAlunosAtivos },
-        { label: "Alunos desligados", valor: agregado.totalDesligados },
-        { label: "Vagas ofertadas", valor: agregado.totalVagas },
-        {
-          label: "Taxa de evasão média",
-          valor:
-            agregado.taxaEvasaoMedia !== null
-              ? `${agregado.taxaEvasaoMedia.toFixed(1)}%`
-              : "N/A",
-        },
-        { label: "Escolas em alerta verde", valor: agregado.porAlerta.verde },
-        {
-          label: "Escolas em alerta amarelo",
-          valor: agregado.porAlerta.amarelo,
-        },
-        {
-          label: "Escolas em alerta vermelho",
-          valor: agregado.porAlerta.vermelho,
-        },
-      ],
+      montarSecoesEntidades(data.escolas),
       "relatorio-completo-escolas.pdf"
     );
   }
