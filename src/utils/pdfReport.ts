@@ -100,12 +100,28 @@ interface EntidadeComMetricas {
   alunosAtivos?: number;
   desligados?: number;
   vagas?: number;
+  vagasDisponiveis?: number;
   taxaEvasao?: number;
   nivelAlerta?: string;
 }
 
+export interface OpcoesSecoesEntidades {
+  mostrarDesligados?: boolean;
+}
+
+export function formatarVagasDisponiveis(vagasDisponiveis: number): string {
+  if (vagasDisponiveis >= 0) return String(vagasDisponiveis);
+
+  const excedente = Math.abs(vagasDisponiveis);
+
+  return `0 (lotado: ${excedente} aluno${
+    excedente > 1 ? "s" : ""
+  } acima das vagas)`;
+}
+
 export function montarSecoesEntidades(
-  itens: EntidadeComMetricas[]
+  itens: EntidadeComMetricas[],
+  { mostrarDesligados = true }: OpcoesSecoesEntidades = {}
 ): SecaoRelatorio[] {
   return [...itens]
     .sort((a, b) => (a.nome ?? "").localeCompare(b.nome ?? "", "pt-BR"))
@@ -115,18 +131,23 @@ export function montarSecoesEntidades(
       if (item.cidade) linhas.push({ label: "Cidade", valor: item.cidade });
       if (item.escola) linhas.push({ label: "Escola", valor: item.escola });
 
-      linhas.push({ label: "Alunos totais", valor: item.alunos ?? 0 });
-
       if (item.alunosAtivos !== undefined) {
         linhas.push({ label: "Alunos ativos", valor: item.alunosAtivos });
       }
 
-      if (item.desligados !== undefined) {
+      if (mostrarDesligados && item.desligados !== undefined) {
         linhas.push({ label: "Alunos desligados", valor: item.desligados });
       }
 
       if (item.vagas !== undefined) {
         linhas.push({ label: "Vagas ofertadas", valor: item.vagas });
+      }
+
+      if (item.vagasDisponiveis !== undefined) {
+        linhas.push({
+          label: "Vagas disponíveis",
+          valor: formatarVagasDisponiveis(item.vagasDisponiveis),
+        });
       }
 
       if (item.taxaEvasao !== undefined) {
@@ -150,6 +171,7 @@ export interface AgregadoEntidades {
   totalAlunosAtivos: number;
   totalDesligados: number;
   totalVagas: number;
+  totalVagasDisponiveis: number | null;
   taxaEvasaoMedia: number | null;
   porAlerta: { verde: number; amarelo: number; vermelho: number };
 }
@@ -162,6 +184,8 @@ export function calcularAgregadoEntidades(
   let totalAlunosAtivos = 0;
   let totalDesligados = 0;
   let totalVagas = 0;
+  let totalVagasDisponiveis = 0;
+  let countVagasDisponiveis = 0;
   let somaTaxaEvasao = 0;
   let countTaxaEvasao = 0;
 
@@ -170,6 +194,13 @@ export function calcularAgregadoEntidades(
     totalAlunosAtivos += item.alunosAtivos ?? item.alunos ?? 0;
     totalDesligados += item.desligados ?? 0;
     totalVagas += item.vagas ?? 0;
+
+    if (item.vagasDisponiveis !== undefined) {
+      // Entidades lotadas entram como zero para nao mascarar as vagas que
+      // realmente sobram nas outras.
+      totalVagasDisponiveis += Math.max(0, item.vagasDisponiveis);
+      countVagasDisponiveis += 1;
+    }
 
     if (item.taxaEvasao !== undefined) {
       somaTaxaEvasao += item.taxaEvasao;
@@ -187,6 +218,8 @@ export function calcularAgregadoEntidades(
     totalAlunosAtivos,
     totalDesligados,
     totalVagas,
+    totalVagasDisponiveis:
+      countVagasDisponiveis > 0 ? totalVagasDisponiveis : null,
     taxaEvasaoMedia:
       countTaxaEvasao > 0 ? somaTaxaEvasao / countTaxaEvasao : null,
     porAlerta,

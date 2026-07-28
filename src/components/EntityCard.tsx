@@ -7,14 +7,15 @@ interface Props {
 
   supervisores?: string[];
 
-  alunos: number;
-
   desligados?: number;
   alunosAtivos?: number;
   vagas?: number;
+  vagasDisponiveis?: number;
   taxaEvasao?: number;
 
   nivelAlerta?: string;
+
+  mostrarDesligados?: boolean;
 }
 
 export default function EntityCard({
@@ -23,13 +24,16 @@ export default function EntityCard({
   escola,
   supervisor,
   supervisores,
-  alunos,
   desligados,
   alunosAtivos,
   vagas,
+  vagasDisponiveis,
   taxaEvasao,
   nivelAlerta,
+  mostrarDesligados = true,
 }: Props) {
+  const lotado =
+    vagasDisponiveis !== undefined && vagasDisponiveis < 0;
   return (
     <div className={`entity-card ${nivelAlerta}`}>
       <h3>{nome}</h3>
@@ -62,7 +66,7 @@ export default function EntityCard({
 
       
 
-      {desligados !== undefined && (
+      {mostrarDesligados && desligados !== undefined && (
         <p>
           <strong>Alunos desligados:</strong>{" "}
           {desligados}
@@ -75,15 +79,25 @@ export default function EntityCard({
           {alunosAtivos}
         </p>
       )}
-      <p>
-        <strong>Alunos totais:</strong>{" "}
-        {alunos}
-      </p>
-
       {vagas !== undefined && (
         <p>
           <strong>Vagas ofertadas:</strong>{" "}
           {vagas}
+        </p>
+      )}
+
+      {vagasDisponiveis !== undefined && (
+        <p>
+          <strong>Vagas disponíveis:</strong>{" "}
+          {Math.max(0, vagasDisponiveis)}
+
+          {lotado && (
+            <span className="lotacao-aviso">
+              lotado: {Math.abs(vagasDisponiveis)} aluno
+              {Math.abs(vagasDisponiveis) > 1 ? "s" : ""} acima
+              das vagas
+            </span>
+          )}
         </p>
       )}
 
