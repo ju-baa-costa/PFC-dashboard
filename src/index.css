@@ -59,11 +59,30 @@ body {
   gap: 20px;
 }
 
+.home-grid {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.home-grid .summary-card,
+.home-grid .projeto-de-vida-card {
+  flex: 1 1 250px;
+}
+
 .summary-card {
   background: white;
   border-radius: 16px;
   padding: 24px;
   cursor: pointer;
+}
+
+.projeto-de-vida-card {
+  background: white;
+  border-radius: 16px;
+  padding: 24px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
 }
 
 .entity-card {

@@ -32,6 +32,8 @@ export default function Header({
       "Dashboard de Turmas",
     "/supervisores":
       "Dashboard de Supervisores",
+    "/projeto-de-vida":
+      "Dashboard de Projeto de Vida",
   };
 
   const currentTitle =
