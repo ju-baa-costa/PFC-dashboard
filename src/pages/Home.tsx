@@ -30,6 +30,10 @@ export default function Home() {
         { label: "Alunos desligados", valor: agregado.totalDesligados },
         { label: "Vagas ofertadas", valor: agregado.totalVagas },
         {
+          label: "Vagas disponíveis",
+          valor: agregado.totalVagasDisponiveis ?? "N/A",
+        },
+        {
           label: "Taxa de evasão média",
           valor:
             agregado.taxaEvasaoMedia !== null

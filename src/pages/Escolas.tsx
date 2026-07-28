@@ -23,7 +23,7 @@ export default function Escolas() {
   function gerarCompleto() {
     gerarRelatorioDetalhadoPDF(
       "Relatório Completo - Escolas",
-      montarSecoesEntidades(data.escolas),
+      montarSecoesEntidades(data.escolas, { mostrarDesligados: false }),
       "relatorio-completo-escolas.pdf"
     );
   }
@@ -52,6 +52,7 @@ export default function Escolas() {
           <EntityCard
             key={escola.nome}
             {...escola}
+            mostrarDesligados={false}
           />
         ))}
       </div>
