@@ -1,6 +1,9 @@
+import { useState } from "react";
 import Layout from "../components/Layout";
 import EntityCard from "../components/EntityCard";
+import OrdenacaoSelector from "../components/OrdenacaoSelector";
 import { ordenarPorAlerta } from "../utils/ordenacaoAlerta";
+import { ordenarPorTaxaEvasao } from "../utils/ordenacaoTaxaEvasao";
 
 import { useDashboard } from "../hooks/useDashboard";
 import {
@@ -10,12 +13,19 @@ import {
   montarSecoesEntidades,
 } from "../utils/pdfReport";
 
+const OPCOES_ORDENACAO = [
+  { value: "alerta", label: "Nível de alerta" },
+  { value: "evasao", label: "Taxa de evasão (maior-menor)" },
+];
+
 export default function Cidades() {
   const {
     data,
     loading,
     atualizar,
   } = useDashboard();
+
+  const [ordenacao, setOrdenacao] = useState("alerta");
 
   if (loading)
     return <h1>Carregando...</h1>;
@@ -41,14 +51,27 @@ export default function Cidades() {
     );
   }
 
+  const cidadesOrdenadas =
+    ordenacao === "evasao"
+      ? ordenarPorTaxaEvasao(data.cidades)
+      : ordenarPorAlerta(data.cidades);
+
   return (
     <Layout
       onRefresh={atualizar}
       onRelatorioCompleto={gerarCompleto}
       onRelatorioResumido={gerarResumido}
     >
+      <div className="toolbar">
+        <OrdenacaoSelector
+          value={ordenacao}
+          onChange={setOrdenacao}
+          opcoes={OPCOES_ORDENACAO}
+        />
+      </div>
+
       <div className="grid">
-        {ordenarPorAlerta(data.cidades).map(
+        {cidadesOrdenadas.map(
           (cidade:any) => (
             <EntityCard
               key={cidade.nome}

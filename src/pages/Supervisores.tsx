@@ -1,5 +1,7 @@
+import { useState } from "react";
 import Layout from "../components/Layout";
 import SupervisorCard from "../components/SupervisorCard";
+import FilterPanel, { TODAS_CIDADES } from "../components/FilterPanel";
 import { useDashboard } from "../hooks/useDashboard";
 import { ordenarPorFrequencia } from "../utils/ordenacaoFreq";
 import {
@@ -16,6 +18,8 @@ export default function Supervisores() {
     loading,
     atualizar,
   } = useDashboard();
+
+  const [cidadeSelecionada, setCidadeSelecionada] = useState(TODAS_CIDADES);
 
   if (loading) {
     return <h1>Carregando...</h1>;
@@ -42,14 +46,31 @@ export default function Supervisores() {
     );
   }
 
+  const cidades: string[] = [...new Set<string>(data.cidades.map((c: any) => c.nome))].sort();
+
+  const supervisoresFiltrados =
+    cidadeSelecionada === TODAS_CIDADES
+      ? data.supervisores
+      : data.supervisores.filter((supervisor: any) =>
+          supervisor.cidades?.includes(cidadeSelecionada)
+        );
+
   return (
     <Layout
       onRefresh={atualizar}
       onRelatorioCompleto={gerarCompleto}
       onRelatorioResumido={gerarResumido}
     >
+      <div className="toolbar">
+        <FilterPanel
+          cidades={cidades}
+          cidadeSelecionada={cidadeSelecionada}
+          onChange={setCidadeSelecionada}
+        />
+      </div>
+
       <div className="grid">
-        {ordenarPorFrequencia(data.supervisores).map(
+        {ordenarPorFrequencia(supervisoresFiltrados).map(
   (supervisor: any) => (
     <SupervisorCard
       key={supervisor.nome}
