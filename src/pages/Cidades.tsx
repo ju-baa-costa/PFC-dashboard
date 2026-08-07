@@ -2,8 +2,8 @@ import { useState } from "react";
 import Layout from "../components/Layout";
 import EntityCard from "../components/EntityCard";
 import OrdenacaoSelector from "../components/OrdenacaoSelector";
-import { ordenarPorAlerta } from "../utils/ordenacaoAlerta";
 import { ordenarPorTaxaEvasao } from "../utils/ordenacaoTaxaEvasao";
+import { ordenarPorNome } from "../utils/ordenacaoNome";
 
 import { useDashboard } from "../hooks/useDashboard";
 import {
@@ -14,8 +14,8 @@ import {
 } from "../utils/pdfReport";
 
 const OPCOES_ORDENACAO = [
-  { value: "alerta", label: "Nível de alerta" },
   { value: "evasao", label: "Taxa de evasão (maior-menor)" },
+  { value: "nome", label: "Nome (A-Z)" },
 ];
 
 export default function Cidades() {
@@ -25,7 +25,7 @@ export default function Cidades() {
     atualizar,
   } = useDashboard();
 
-  const [ordenacao, setOrdenacao] = useState("alerta");
+  const [ordenacao, setOrdenacao] = useState("evasao");
 
   if (loading)
     return <h1>Carregando...</h1>;
@@ -52,9 +52,9 @@ export default function Cidades() {
   }
 
   const cidadesOrdenadas =
-    ordenacao === "evasao"
-      ? ordenarPorTaxaEvasao(data.cidades)
-      : ordenarPorAlerta(data.cidades);
+    ordenacao === "nome"
+      ? ordenarPorNome(data.cidades)
+      : ordenarPorTaxaEvasao(data.cidades);
 
   return (
     <Layout

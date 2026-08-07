@@ -4,8 +4,8 @@ import EntityCard from "../components/EntityCard";
 import FilterPanel, { TODAS_CIDADES } from "../components/FilterPanel";
 import OrdenacaoSelector from "../components/OrdenacaoSelector";
 import { useDashboard } from "../hooks/useDashboard";
-import { ordenarPorAlerta } from "../utils/ordenacaoAlerta";
 import { ordenarPorTaxaEvasao } from "../utils/ordenacaoTaxaEvasao";
+import { ordenarPorNome } from "../utils/ordenacaoNome";
 import {
   calcularAgregadoEntidades,
   gerarRelatorioPDF,
@@ -14,15 +14,15 @@ import {
 } from "../utils/pdfReport";
 
 const OPCOES_ORDENACAO = [
-  { value: "alerta", label: "Nível de alerta" },
   { value: "evasao", label: "Taxa de evasão (maior-menor)" },
+  { value: "nome", label: "Nome (A-Z)" },
 ];
 
 export default function Turmas() {
   const { data, loading, atualizar } = useDashboard();
 
   const [cidadeSelecionada, setCidadeSelecionada] = useState(TODAS_CIDADES);
-  const [ordenacao, setOrdenacao] = useState("alerta");
+  const [ordenacao, setOrdenacao] = useState("evasao");
 
   if (loading) {
     return <h1>Carregando...</h1>;
@@ -57,9 +57,9 @@ export default function Turmas() {
       : data.turmas.filter((turma: any) => turma.cidade === cidadeSelecionada);
 
   const turmasOrdenadas =
-    ordenacao === "evasao"
-      ? ordenarPorTaxaEvasao(turmasFiltradas)
-      : ordenarPorAlerta(turmasFiltradas);
+    ordenacao === "nome"
+      ? ordenarPorNome(turmasFiltradas)
+      : ordenarPorTaxaEvasao(turmasFiltradas);
 
   return (
     <Layout
