@@ -59,14 +59,51 @@ body {
   gap: 20px;
 }
 
-.home-grid {
+.toolbar {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
+  gap: 16px 24px;
+  margin-bottom: 20px;
 }
 
-.home-grid .summary-card,
-.home-grid .projeto-de-vida-card {
-  flex: 1 1 250px;
+.filter-panel,
+.ordenacao-selector {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.toolbar-label {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.chip-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chip {
+  padding: 8px 16px;
+  border: 1px solid #ddd;
+  border-radius: 999px;
+  background: white;
+  cursor: pointer;
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+
+.chip:hover {
+  opacity: 0.9;
+}
+
+.chip.active {
+  background: #222;
+  border-color: #222;
+  color: white;
 }
 
 .summary-card {
@@ -76,20 +113,22 @@ body {
   cursor: pointer;
 }
 
-.projeto-de-vida-card {
-  background: white;
-  border-radius: 16px;
-  padding: 24px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-}
-
 .entity-card {
   background: white;
   border-radius: 16px;
   padding: 20px;
   border-left: 12px solid transparent;
+}
+
+.lotacao-aviso {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #fee2e2;
+  color: #b91c1c;
+  font-size: 0.75rem;
+  font-weight: 600;
 }
 
 .entity-card.verde {
