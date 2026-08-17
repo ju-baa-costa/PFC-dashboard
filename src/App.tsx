@@ -5,7 +5,7 @@ import Cidades from "./pages/Cidades";
 import Escolas from "./pages/Escolas";
 import Turmas from "./pages/Turmas";
 import Supervisores from "./pages/Supervisores";
-import ProjetoDeVida from "./pages/ProjetoDeVida";
+import Cursinho from "./pages/Cursinho";
 
 function App() {
   return (
@@ -15,7 +15,7 @@ function App() {
         <Route path="/escolas" element={<Escolas />} />
         <Route path="/turmas" element={<Turmas />} />
         <Route path="/supervisores" element={<Supervisores />} />
-        <Route path="/projeto-de-vida" element={<ProjetoDeVida />} />
+        <Route path="/cursinho" element={<Cursinho />} />
       </Routes>
     </BrowserRouter>
   );

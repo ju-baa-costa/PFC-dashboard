@@ -77,6 +77,17 @@ function doGet() {
 
   const values = sheet.getDataRange().getValues();
 
+  // O ano escolar e uma coluna nova e opcional: em vez de fixar a posicao,
+  // procuramos pelo cabecalho para nao quebrar caso ela seja inserida no meio
+  // da planilha. Sem ela, o bloco do cursinho nao consegue calcular elegiveis.
+  const colunaAno = indiceColuna(values[0], [
+    "ano",
+    "serie",
+    "ano escolar",
+    "ano/serie",
+    "serie/ano"
+  ]);
+
   const alunos = values
     .slice(1)
     .filter(row => {
@@ -102,13 +113,24 @@ function doGet() {
       aulasTotais: Number(row[8]) || 0,
       aulasPlanejadas: Number(row[9]) || 0,
 
-      dataEntrada: row[10]
+      dataEntrada: row[10],
+
+      ano:
+        colunaAno === -1
+          ? null
+          : extrairAnoEscolar(row[colunaAno])
     }));
 
   const cidades = agruparCidades(alunos);
   const escolas = agruparEscolas(alunos);
   const turmas = agruparTurmas(alunos);
   const supervisores = agruparSupervisores(alunos);
+
+  const cursinho = montarCursinho(
+    alunos,
+    lerAlunosCursinho(),
+    colunaAno !== -1
+  );
 
   const ativos = alunos.filter(
     a => a.situacao === "ativo"
@@ -149,7 +171,9 @@ function doGet() {
     cidades,
     escolas,
     turmas,
-    supervisores
+    supervisores,
+
+    cursinho
   };
 
   return ContentService
@@ -166,6 +190,56 @@ function normalizarTexto(valor) {
     .trim()
     .replace(/\.+$/, "")
     .trim();
+}
+
+// Chave usada so para comparar textos entre as duas abas: os cadastros nem
+// sempre batem em caixa e acentuacao ("São Roque" x "SAO ROQUE"), e sem isso
+// a mesma cidade ou o mesmo aluno apareceria duas vezes.
+function chaveComparacao(valor) {
+  return normalizarTexto(valor)
+    .toUpperCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
+function indiceColuna(
+  cabecalho,
+  nomesAceitos
+) {
+  const chaves = nomesAceitos.map(
+    chaveComparacao
+  );
+
+  for (
+    let i = 0;
+    i < cabecalho.length;
+    i++
+  ) {
+    if (
+      chaves.indexOf(
+        chaveComparacao(cabecalho[i])
+      ) !== -1
+    ) {
+      return i;
+    }
+  }
+
+  return -1;
+}
+
+// Aceita "8", "8o", "8º ano", "9ª serie" etc. e devolve so o numero do ano.
+function extrairAnoEscolar(valor) {
+  const match = normalizarTexto(
+    valor
+  ).match(/\d{1,2}/);
+
+  if (!match) return null;
+
+  const ano = Number(match[0]);
+
+  return ano >= 1 && ano <= 12
+    ? ano
+    : null;
 }
 
 function formatarNomeTurma(
@@ -747,4 +821,218 @@ function agruparSupervisores(
         b.alunos -
         a.alunos
     );
+}
+
+const ABA_CURSINHO = "API_Cursinho";
+
+const ANOS_ELEGIVEIS_CURSINHO = [
+  8,
+  9
+];
+
+const SITUACOES_FORA_DO_CURSINHO = [
+  "desligado",
+  "desligada",
+  "desistente",
+  "inativo",
+  "inativa",
+  "cancelado",
+  "cancelada"
+];
+
+// A lista do cursinho vive numa aba propria (importada da outra planilha).
+// Se a aba ainda nao existir devolvemos null para o front saber que o dado
+// nao esta disponivel, em vez de mostrar zero como se fosse um numero real.
+function lerAlunosCursinho() {
+  const aba = SpreadsheetApp
+    .getActiveSpreadsheet()
+    .getSheetByName(ABA_CURSINHO);
+
+  if (!aba) return null;
+
+  const values = aba
+    .getDataRange()
+    .getValues();
+
+  if (values.length < 2) return [];
+
+  const cabecalho = values[0];
+
+  const colunaNome = indiceColuna(
+    cabecalho,
+    ["nome", "aluno", "nome do aluno"]
+  );
+
+  const colunaCidade = indiceColuna(
+    cabecalho,
+    ["cidade", "municipio"]
+  );
+
+  const colunaSituacao = indiceColuna(
+    cabecalho,
+    ["situacao", "status"]
+  );
+
+  if (colunaNome === -1) return [];
+
+  return values
+    .slice(1)
+    .map(row => ({
+      nome: normalizarTexto(
+        row[colunaNome]
+      ),
+
+      cidade:
+        colunaCidade === -1
+          ? ""
+          : normalizarTexto(
+              row[colunaCidade]
+            ),
+
+      situacao:
+        colunaSituacao === -1
+          ? ""
+          : normalizarTexto(
+              row[colunaSituacao]
+            ).toLowerCase()
+    }))
+    .filter(aluno => {
+      if (
+        aluno.nome === "" ||
+        aluno.nome === "#N/A" ||
+        aluno.nome === "#ERROR!"
+      ) {
+        return false;
+      }
+
+      // Sem coluna de situacao a aba inteira conta como matriculada.
+      return (
+        SITUACOES_FORA_DO_CURSINHO.indexOf(
+          aluno.situacao
+        ) === -1
+      );
+    });
+}
+
+function montarCursinho(
+  alunos,
+  alunosCursinho,
+  temColunaAno
+) {
+  if (alunosCursinho === null) {
+    return null;
+  }
+
+  const noCursinho = {};
+
+  alunosCursinho.forEach(aluno => {
+    noCursinho[
+      chaveComparacao(aluno.nome)
+    ] = true;
+  });
+
+  // A aba do cursinho costuma escrever a cidade de outro jeito ("Sao Roque"
+  // x "SÃO ROQUE"), entao a grafia exibida sai sempre do cadastro do programa.
+  const nomeCidade = {};
+
+  alunos.forEach(aluno => {
+    const chave = chaveComparacao(
+      aluno.cidade
+    );
+
+    if (chave && !nomeCidade[chave]) {
+      nomeCidade[chave] =
+        normalizarTexto(aluno.cidade);
+    }
+  });
+
+  const cidades = {};
+
+  function entradaCidade(nome) {
+    const chave =
+      chaveComparacao(nome) ||
+      "NAO INFORMADO";
+
+    if (!cidades[chave]) {
+      cidades[chave] = {
+        nome:
+          nomeCidade[chave] ||
+          normalizarTexto(nome) ||
+          "Não informado",
+
+        alunos: 0,
+        elegiveis: 0,
+        potenciais: 0
+      };
+    }
+
+    return cidades[chave];
+  }
+
+  let elegiveis = 0;
+  let potenciais = 0;
+
+  // Os alunos do programa entram primeiro para o ranking usar o nome da
+  // cidade como ele ja aparece no resto do dashboard.
+  alunos.forEach(aluno => {
+    if (aluno.situacao !== "ativo") {
+      return;
+    }
+
+    if (
+      ANOS_ELEGIVEIS_CURSINHO.indexOf(
+        aluno.ano
+      ) === -1
+    ) {
+      return;
+    }
+
+    const cidade = entradaCidade(
+      aluno.cidade
+    );
+
+    cidade.elegiveis++;
+    elegiveis++;
+
+    if (
+      !noCursinho[
+        chaveComparacao(aluno.nome)
+      ]
+    ) {
+      cidade.potenciais++;
+      potenciais++;
+    }
+  });
+
+  alunosCursinho.forEach(aluno => {
+    entradaCidade(aluno.cidade)
+      .alunos++;
+  });
+
+  const ranking = Object.keys(cidades)
+    .map(chave => cidades[chave])
+    .sort(
+      (a, b) =>
+        b.alunos - a.alunos ||
+        a.nome.localeCompare(
+          b.nome,
+          "pt-BR"
+        )
+    );
+
+  return {
+    total: alunosCursinho.length,
+
+    elegiveis,
+    potenciais,
+
+    // Sem a coluna de ano na aba API_Alunos nao da para saber quem e do
+    // 8o/9o ano, entao elegiveis e potenciais ficam zerados de proposito.
+    anoDisponivel: temColunaAno,
+
+    anosElegiveis:
+      ANOS_ELEGIVEIS_CURSINHO,
+
+    cidades: ranking
+  };
 }

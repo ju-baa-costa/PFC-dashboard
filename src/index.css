@@ -54,6 +54,7 @@ body {
 }
 
 .grid {
+  margin: auto;
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
   gap: 20px;
@@ -111,6 +112,73 @@ body {
   border-radius: 16px;
   padding: 24px;
   cursor: pointer;
+}
+
+.summary-card-static {
+  cursor: default;
+}
+
+.summary-card-hint {
+  margin-top: 8px;
+  font-size: 0.85rem;
+  color: #555;
+}
+
+.section-card {
+  background: white;
+  border-radius: 16px;
+  padding: 20px;
+  margin-top: 20px;
+}
+
+.section-card-legenda {
+  margin-top: 4px;
+  margin-bottom: 12px;
+  font-size: 0.85rem;
+  color: #555;
+}
+
+.ranking-list {
+  list-style: none;
+}
+
+.ranking-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid #eee;
+}
+
+.ranking-row:last-child {
+  border-bottom: none;
+}
+
+.ranking-posicao {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid #ddd;
+  border-radius: 999px;
+  font-size: 0.85rem;
+}
+
+.ranking-nome {
+  flex: 1 1 160px;
+}
+
+.ranking-detalhe {
+  font-size: 0.85rem;
+  color: #555;
+  white-space: nowrap;
+}
+
+.ranking-valor {
+  font-weight: 600;
+  white-space: nowrap;
 }
 
 .entity-card {

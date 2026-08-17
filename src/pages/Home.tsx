@@ -2,7 +2,6 @@ import { useNavigate } from "react-router-dom";
 
 import Layout from "../components/Layout";
 import SummaryCard from "../components/SummaryCard";
-import ProjetoDeVidaCard from "../components/projetoDeVidaCard";
 
 import { useDashboard } from "../hooks/useDashboard";
 import {
@@ -76,7 +75,7 @@ export default function Home() {
       onRelatorioCompleto={gerarCompleto}
       onRelatorioResumido={gerarResumido}
     >
-      <div className="grid home-grid">
+      <div className="grid">
         <SummaryCard
           title="Cidades"
           value={data.resumo.cidades}
@@ -101,9 +100,10 @@ export default function Home() {
           onClick={() => navigate("/supervisores")}
         />
 
-        <ProjetoDeVidaCard
-          title="Projeto de Vida"
-          onClick={() => navigate("/projeto-de-vida")}
+        <SummaryCard
+          title="Cursinho"
+          value={data.cursinho ? data.cursinho.total : "—"}
+          onClick={() => navigate("/cursinho")}
         />
       </div>
     </Layout>
