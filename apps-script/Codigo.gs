@@ -317,15 +317,20 @@ function mapearColunasAlunos(cabecalho) {
   };
 }
 
-// Aceita "8", "8o", "8º ano", "9ª serie" etc. e devolve so o numero do ano.
+// O ano vem escrito de tudo quanto e jeito: "8", "8o", "8º ano", "9ª serie" e
+// principalmente junto da turma ("6b", "8a"). Por isso procuramos o numero
+// dentro do texto em vez de comparar o valor inteiro.
+//
+// O grupo so vale quando nao esta colado em outro digito, senao um "2024 - 8A"
+// casaria com um pedaco do ano do calendario em vez da serie.
 function extrairAnoEscolar(valor) {
   const match = normalizarTexto(
     valor
-  ).match(/\d{1,2}/);
+  ).match(/(?:^|\D)(\d{1,2})(?=\D|$)/);
 
   if (!match) return null;
 
-  const ano = Number(match[0]);
+  const ano = Number(match[1]);
 
   return ano >= 1 && ano <= 12
     ? ano
@@ -1205,26 +1210,44 @@ function montarCursinho(
       ] = true;
     }
 
-    const serie =
-      aluno.serie || "Não informado";
+    // "8a" e "8b" sao a mesma serie: sem agrupar pelo ano a quebra viraria
+    // uma linha por turma. So cai no texto cru quando nao da para ler o ano.
+    const ano = extrairAnoEscolar(
+      aluno.serie
+    );
 
-    series[serie] =
-      (series[serie] || 0) + 1;
+    const rotulo =
+      ano !== null
+        ? ano + "º ano"
+        : aluno.serie || "Não informado";
+
+    if (!series[rotulo]) {
+      series[rotulo] = {
+        serie: rotulo,
+        ano: ano,
+        alunos: 0
+      };
+    }
+
+    series[rotulo].alunos++;
   });
 
   const porSerie = Object.keys(series)
-    .map(serie => ({
-      serie,
-      alunos: series[serie]
-    }))
-    .sort(
-      (a, b) =>
-        b.alunos - a.alunos ||
-        a.serie.localeCompare(
+    .map(rotulo => series[rotulo])
+    .sort((a, b) => {
+      // Quem nao tem ano legivel vai para o fim da lista.
+      if (a.ano === null && b.ano === null) {
+        return a.serie.localeCompare(
           b.serie,
           "pt-BR"
-        )
-    );
+        );
+      }
+
+      if (a.ano === null) return 1;
+      if (b.ano === null) return -1;
+
+      return a.ano - b.ano;
+    });
 
   const ranking = Object.keys(cidades)
     .map(chave => {
