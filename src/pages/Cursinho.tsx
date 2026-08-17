@@ -10,6 +10,10 @@ import {
 interface CidadeCursinho {
   nome: string;
   alunos: number;
+  somenteIfsp: number;
+  somenteEtec: number;
+  ambos: number;
+  semTurma: number;
   ifsp: number;
   etec: number;
   elegiveis: number;
@@ -23,9 +27,12 @@ interface SerieCursinho {
 
 interface DadosCursinho {
   total: number;
+  somenteIfsp: number;
+  somenteEtec: number;
+  ambos: number;
+  semTurma: number;
   ifsp: number;
   etec: number;
-  semTurma: number;
   escolas: number;
   porSerie: SerieCursinho[];
   elegiveis: number;
@@ -39,6 +46,27 @@ const SEM_DADO = "—";
 
 function formatarAnos(anos: number[]) {
   return anos.map((ano) => `${ano}º ano`).join(" e ");
+}
+
+// As partes sao exclusivas entre si, entao a soma delas bate com o total de
+// alunos. "Sem turma" so aparece quando existe, para nao virar ruido.
+function descreverTurmas(item: {
+  somenteIfsp: number;
+  somenteEtec: number;
+  ambos: number;
+  semTurma: number;
+}) {
+  const partes = [
+    `Só IFSP: ${item.somenteIfsp}`,
+    `Só ETEC: ${item.somenteEtec}`,
+    `Ambos: ${item.ambos}`,
+  ];
+
+  if (item.semTurma > 0) {
+    partes.push(`Sem turma: ${item.semTurma}`);
+  }
+
+  return partes.join(" · ");
 }
 
 export default function Cursinho() {
@@ -68,9 +96,12 @@ export default function Cursinho() {
           titulo: "Resumo",
           itens: [
             { label: "Alunos no cursinho", valor: cursinho.total },
-            { label: "Turma IFSP", valor: cursinho.ifsp },
-            { label: "Turma ETEC", valor: cursinho.etec },
+            { label: "Só IFSP", valor: cursinho.somenteIfsp },
+            { label: "Só ETEC", valor: cursinho.somenteEtec },
+            { label: "IFSP e ETEC", valor: cursinho.ambos },
             { label: "Sem turma informada", valor: cursinho.semTurma },
+            { label: "Total na turma IFSP", valor: cursinho.ifsp },
+            { label: "Total na turma ETEC", valor: cursinho.etec },
             { label: "Escolas atendidas", valor: cursinho.escolas },
             {
               label: `Alunos do programa (${anosElegiveis})`,
@@ -94,8 +125,10 @@ export default function Cursinho() {
           titulo: `${indice + 1}. ${cidade.nome}`,
           itens: [
             { label: "Alunos no cursinho", valor: cidade.alunos },
-            { label: "Turma IFSP", valor: cidade.ifsp },
-            { label: "Turma ETEC", valor: cidade.etec },
+            { label: "Só IFSP", valor: cidade.somenteIfsp },
+            { label: "Só ETEC", valor: cidade.somenteEtec },
+            { label: "IFSP e ETEC", valor: cidade.ambos },
+            { label: "Sem turma informada", valor: cidade.semTurma },
             {
               label: `Alunos do programa (${anosElegiveis})`,
               valor: anoDisponivel ? cidade.elegiveis : "N/A",
@@ -145,9 +178,7 @@ export default function Cursinho() {
           title="Alunos no cursinho"
           value={cursinho ? cursinho.total : SEM_DADO}
           hint={
-            cursinho
-              ? `IFSP: ${cursinho.ifsp} · ETEC: ${cursinho.etec}`
-              : undefined
+            cursinho ? descreverTurmas(cursinho) : undefined
           }
         />
 
@@ -182,7 +213,7 @@ export default function Cursinho() {
                 <span className="ranking-nome">{cidade.nome}</span>
 
                 <span className="ranking-detalhe">
-                  IFSP: {cidade.ifsp} · ETEC: {cidade.etec}
+                  {descreverTurmas(cidade)}
                 </span>
 
                 {anoDisponivel && (

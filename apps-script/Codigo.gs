@@ -77,21 +77,16 @@ function doGet() {
 
   const values = sheet.getDataRange().getValues();
 
-  // O ano escolar e uma coluna nova e opcional: em vez de fixar a posicao,
-  // procuramos pelo cabecalho para nao quebrar caso ela seja inserida no meio
-  // da planilha. Sem ela, o bloco do cursinho nao consegue calcular elegiveis.
-  const colunaAno = indiceColuna(values[0], [
-    "ano",
-    "serie",
-    "ano escolar",
-    "ano/serie",
-    "serie/ano"
-  ]);
+  const colunas = mapearColunasAlunos(
+    values[0]
+  );
 
   const alunos = values
     .slice(1)
     .filter(row => {
-      const nome = normalizarTexto(row[0]);
+      const nome = normalizarTexto(
+        row[colunas.nome]
+      );
 
       return (
         nome !== "" &&
@@ -100,25 +95,27 @@ function doGet() {
       );
     })
     .map(row => ({
-      nome: normalizarTexto(row[0]),
-      cidade: normalizarTexto(row[1]),
-      escola: normalizarTexto(row[2]),
-      turma: normalizarTexto(row[3]),
-      supervisor: normalizarTexto(row[4]),
-      situacao: normalizarTexto(row[5]).toLowerCase(),
+      nome: normalizarTexto(row[colunas.nome]),
+      cidade: normalizarTexto(row[colunas.cidade]),
+      escola: normalizarTexto(row[colunas.escola]),
+      turma: normalizarTexto(row[colunas.turma]),
+      supervisor: normalizarTexto(row[colunas.supervisor]),
+      situacao: normalizarTexto(row[colunas.situacao]).toLowerCase(),
 
-      presencas: Number(row[6]) || 0,
-      faltas: Number(row[7]) || 0,
+      presencas: Number(row[colunas.presencas]) || 0,
+      faltas: Number(row[colunas.faltas]) || 0,
 
-      aulasTotais: Number(row[8]) || 0,
-      aulasPlanejadas: Number(row[9]) || 0,
+      aulasTotais: Number(row[colunas.aulasTotais]) || 0,
+      aulasPlanejadas: Number(row[colunas.aulasPlanejadas]) || 0,
 
-      dataEntrada: row[10],
+      dataEntrada: row[colunas.dataEntrada],
 
       ano:
-        colunaAno === -1
+        colunas.serie === -1
           ? null
-          : extrairAnoEscolar(row[colunaAno])
+          : extrairAnoEscolar(
+              row[colunas.serie]
+            )
     }));
 
   const cidades = agruparCidades(alunos);
@@ -129,7 +126,7 @@ function doGet() {
   const cursinho = montarCursinho(
     alunos,
     lerAlunosCursinho(),
-    colunaAno !== -1
+    colunas.serie !== -1
   );
 
   const ativos = alunos.filter(
@@ -225,6 +222,99 @@ function indiceColuna(
   }
 
   return -1;
+}
+
+// Ate agora as colunas de API_Alunos eram lidas por posicao fixa, o que quebra
+// tudo assim que alguem insere uma coluna no meio (foi o caso da serie, que
+// entrou depois do supervisor e empurrou situacao, presencas, faltas...).
+// Agora cada coluna e achada pelo cabecalho; a posicao antiga so entra como
+// ultimo recurso, ja corrigida pelo deslocamento que a serie causa.
+function mapearColunasAlunos(cabecalho) {
+  const serie = indiceColuna(cabecalho, [
+    "serie",
+    "ano",
+    "ano escolar",
+    "ano/serie",
+    "serie/ano"
+  ]);
+
+  function posicaoAntiga(indice) {
+    return serie !== -1 &&
+      serie <= indice
+      ? indice + 1
+      : indice;
+  }
+
+  function coluna(nomes, indiceAntigo) {
+    const encontrada = indiceColuna(
+      cabecalho,
+      nomes
+    );
+
+    return encontrada === -1
+      ? posicaoAntiga(indiceAntigo)
+      : encontrada;
+  }
+
+  return {
+    nome: coluna(
+      ["nome", "aluno", "nome do aluno"],
+      0
+    ),
+
+    cidade: coluna(
+      ["cidade", "municipio"],
+      1
+    ),
+
+    escola: coluna(
+      ["escola", "unidade escolar"],
+      2
+    ),
+
+    turma: coluna(
+      ["turma", "codigo da turma", "cod turma"],
+      3
+    ),
+
+    supervisor: coluna(
+      ["supervisor", "supervisora"],
+      4
+    ),
+
+    situacao: coluna(
+      ["situacao", "status"],
+      5
+    ),
+
+    presencas: coluna(
+      ["presencas", "presenca"],
+      6
+    ),
+
+    faltas: coluna(
+      ["faltas", "falta"],
+      7
+    ),
+
+    aulasTotais: coluna(
+      ["aulas totais", "aulas dadas", "total de aulas"],
+      8
+    ),
+
+    aulasPlanejadas: coluna(
+      ["aulas planejadas", "aulas previstas"],
+      9
+    ),
+
+    dataEntrada: coluna(
+      ["data de entrada", "data entrada", "entrada"],
+      10
+    ),
+
+    // Opcional: sem ela nao da para saber quem e do 8o/9o ano.
+    serie: serie
+  };
 }
 
 // Aceita "8", "8o", "8º ano", "9ª serie" etc. e devolve so o numero do ano.
@@ -1029,8 +1119,11 @@ function montarCursinho(
           "Não informado",
 
         alunos: 0,
-        ifsp: 0,
-        etec: 0,
+
+        somenteIfsp: 0,
+        somenteEtec: 0,
+        ambos: 0,
+        semTurma: 0,
 
         elegiveis: 0,
         potenciais: 0
@@ -1075,8 +1168,9 @@ function montarCursinho(
     }
   });
 
-  let ifsp = 0;
-  let etec = 0;
+  let somenteIfsp = 0;
+  let somenteEtec = 0;
+  let ambos = 0;
   let semTurma = 0;
 
   const escolas = {};
@@ -1089,20 +1183,20 @@ function montarCursinho(
 
     cidade.alunos++;
 
-    // As duas turmas nao sao exclusivas: quem faz IFSP e ETEC conta nas duas,
-    // por isso ifsp + etec pode passar do total.
-    if (aluno.ifsp) {
-      ifsp++;
-      cidade.ifsp++;
-    }
-
-    if (aluno.etec) {
-      etec++;
-      cidade.etec++;
-    }
-
-    if (!aluno.ifsp && !aluno.etec) {
+    // Quem faz as duas turmas cai em "ambos" em vez de contar duas vezes,
+    // assim somenteIfsp + somenteEtec + ambos + semTurma fecha com o total.
+    if (aluno.ifsp && aluno.etec) {
+      ambos++;
+      cidade.ambos++;
+    } else if (aluno.ifsp) {
+      somenteIfsp++;
+      cidade.somenteIfsp++;
+    } else if (aluno.etec) {
+      somenteEtec++;
+      cidade.somenteEtec++;
+    } else {
       semTurma++;
+      cidade.semTurma++;
     }
 
     if (aluno.escola) {
@@ -1133,7 +1227,19 @@ function montarCursinho(
     );
 
   const ranking = Object.keys(cidades)
-    .map(chave => cidades[chave])
+    .map(chave => {
+      const cidade = cidades[chave];
+
+      cidade.ifsp =
+        cidade.somenteIfsp +
+        cidade.ambos;
+
+      cidade.etec =
+        cidade.somenteEtec +
+        cidade.ambos;
+
+      return cidade;
+    })
     .sort(
       (a, b) =>
         b.alunos - a.alunos ||
@@ -1146,9 +1252,14 @@ function montarCursinho(
   return {
     total: alunosCursinho.length,
 
-    ifsp,
-    etec,
+    somenteIfsp,
+    somenteEtec,
+    ambos,
     semTurma,
+
+    // Totais por turma, ja contando quem faz as duas.
+    ifsp: somenteIfsp + ambos,
+    etec: somenteEtec + ambos,
 
     escolas:
       Object.keys(escolas).length,
