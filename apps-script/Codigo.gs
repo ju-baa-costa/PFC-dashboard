@@ -1299,6 +1299,71 @@ function montarCursinho(
     anosElegiveis:
       ANOS_ELEGIVEIS_CURSINHO,
 
-    cidades: ranking
+    cidades: ranking,
+
+    diagnostico:
+      montarDiagnosticoCursinho(
+        alunos,
+        temColunaAno
+      )
+  };
+}
+
+// ---------------------------------------------------------------------------
+// TEMPORARIO - enquanto a coluna de serie nao estiver toda preenchida.
+//
+// Um aluno ativo sem serie nao entra nem nos elegiveis nem no "ainda podem
+// entrar", e some da conta sem deixar rastro. Este bloco existe so para dar
+// visibilidade a esse buraco.
+//
+// Para remover quando a planilha estiver completa: apague esta funcao, a
+// chave `diagnostico` no retorno de montarCursinho, e o componente
+// AvisoSemSerie do front. Nada mais depende disso.
+// ---------------------------------------------------------------------------
+function montarDiagnosticoCursinho(
+  alunos,
+  temColunaAno
+) {
+  // Sem a coluna nao ha o que diagnosticar: o front ja avisa pelo
+  // anoDisponivel que o dado inteiro esta faltando.
+  if (!temColunaAno) return null;
+
+  const cidades = {};
+
+  let semSerie = 0;
+
+  alunos.forEach(aluno => {
+    if (aluno.situacao !== "ativo") {
+      return;
+    }
+
+    if (aluno.ano !== null) return;
+
+    semSerie++;
+
+    const chave =
+      normalizarTexto(aluno.cidade) ||
+      "Não informado";
+
+    cidades[chave] =
+      (cidades[chave] || 0) + 1;
+  });
+
+  return {
+    alunosSemSerie: semSerie,
+
+    cidades: Object.keys(cidades)
+      .map(nome => ({
+        nome: nome,
+        alunos: cidades[nome]
+      }))
+      .sort(
+        (a, b) =>
+          b.alunos - a.alunos ||
+          a.nome.localeCompare(
+            b.nome,
+            "pt-BR"
+          )
+      )
   };
 }

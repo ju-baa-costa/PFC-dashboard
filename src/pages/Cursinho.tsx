@@ -1,5 +1,6 @@
 import Layout from "../components/Layout";
 import SummaryCard from "../components/SummaryCard";
+import AvisoSemSerie from "../components/AvisoSemSerie";
 
 import { useDashboard } from "../hooks/useDashboard";
 import {
@@ -40,6 +41,12 @@ interface DadosCursinho {
   anoDisponivel: boolean;
   anosElegiveis: number[];
   cidades: CidadeCursinho[];
+
+  // Temporario, ver AvisoSemSerie.
+  diagnostico?: {
+    alunosSemSerie: number;
+    cidades: { nome: string; alunos: number }[];
+  } | null;
 }
 
 const SEM_DADO = "—";
@@ -168,7 +175,7 @@ export default function Cursinho() {
       onRelatorioResumido={cursinho ? gerarResumido : undefined}
     >
       {!cursinho && (
-        <div className="section-card aviso-dados">
+        <div className="section-card">
           Os dados do cursinho ainda não estão disponíveis na planilha.
         </div>
       )}
@@ -194,6 +201,8 @@ export default function Cursinho() {
           }
         />
       </div>
+
+      <AvisoSemSerie diagnostico={cursinho?.diagnostico} />
 
       <div className="section-card">
         <h3>Ranking de cidades</h3>
