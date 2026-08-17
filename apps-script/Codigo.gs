@@ -840,6 +840,32 @@ const SITUACOES_FORA_DO_CURSINHO = [
   "cancelada"
 ];
 
+// As colunas de turma podem chegar como checkbox (booleano de verdade) ou
+// como texto digitado na mao, entao as duas formas contam como marcado.
+const MARCACOES_VERDADEIRAS = [
+  "true",
+  "verdadeiro",
+  "sim",
+  "s",
+  "x",
+  "1",
+  "ok"
+];
+
+function lerMarcacao(valor) {
+  if (typeof valor === "boolean") {
+    return valor;
+  }
+
+  return (
+    MARCACOES_VERDADEIRAS.indexOf(
+      normalizarTexto(
+        valor
+      ).toLowerCase()
+    ) !== -1
+  );
+}
+
 // A lista do cursinho vive numa aba propria (importada da outra planilha).
 // Se a aba ainda nao existir devolvemos null para o front saber que o dado
 // nao esta disponivel, em vez de mostrar zero como se fosse um numero real.
@@ -873,6 +899,26 @@ function lerAlunosCursinho() {
     ["situacao", "status"]
   );
 
+  const colunaEscola = indiceColuna(
+    cabecalho,
+    ["escola", "unidade escolar"]
+  );
+
+  const colunaSerie = indiceColuna(
+    cabecalho,
+    ["serie", "ano", "ano escolar"]
+  );
+
+  const colunaIfsp = indiceColuna(
+    cabecalho,
+    ["turma ifsp", "ifsp"]
+  );
+
+  const colunaEtec = indiceColuna(
+    cabecalho,
+    ["turma etec", "etec"]
+  );
+
   if (colunaNome === -1) return [];
 
   return values
@@ -888,6 +934,28 @@ function lerAlunosCursinho() {
           : normalizarTexto(
               row[colunaCidade]
             ),
+
+      escola:
+        colunaEscola === -1
+          ? ""
+          : normalizarTexto(
+              row[colunaEscola]
+            ),
+
+      serie:
+        colunaSerie === -1
+          ? ""
+          : normalizarTexto(
+              row[colunaSerie]
+            ),
+
+      ifsp:
+        colunaIfsp !== -1 &&
+        lerMarcacao(row[colunaIfsp]),
+
+      etec:
+        colunaEtec !== -1 &&
+        lerMarcacao(row[colunaEtec]),
 
       situacao:
         colunaSituacao === -1
@@ -961,6 +1029,9 @@ function montarCursinho(
           "Não informado",
 
         alunos: 0,
+        ifsp: 0,
+        etec: 0,
+
         elegiveis: 0,
         potenciais: 0
       };
@@ -1004,10 +1075,62 @@ function montarCursinho(
     }
   });
 
+  let ifsp = 0;
+  let etec = 0;
+  let semTurma = 0;
+
+  const escolas = {};
+  const series = {};
+
   alunosCursinho.forEach(aluno => {
-    entradaCidade(aluno.cidade)
-      .alunos++;
+    const cidade = entradaCidade(
+      aluno.cidade
+    );
+
+    cidade.alunos++;
+
+    // As duas turmas nao sao exclusivas: quem faz IFSP e ETEC conta nas duas,
+    // por isso ifsp + etec pode passar do total.
+    if (aluno.ifsp) {
+      ifsp++;
+      cidade.ifsp++;
+    }
+
+    if (aluno.etec) {
+      etec++;
+      cidade.etec++;
+    }
+
+    if (!aluno.ifsp && !aluno.etec) {
+      semTurma++;
+    }
+
+    if (aluno.escola) {
+      escolas[
+        chaveComparacao(aluno.escola)
+      ] = true;
+    }
+
+    const serie =
+      aluno.serie || "Não informado";
+
+    series[serie] =
+      (series[serie] || 0) + 1;
   });
+
+  const porSerie = Object.keys(series)
+    .map(serie => ({
+      serie,
+      alunos: series[serie]
+    }))
+    .sort(
+      (a, b) =>
+        b.alunos - a.alunos ||
+        a.serie.localeCompare(
+          b.serie,
+          "pt-BR"
+        )
+    );
 
   const ranking = Object.keys(cidades)
     .map(chave => cidades[chave])
@@ -1022,6 +1145,15 @@ function montarCursinho(
 
   return {
     total: alunosCursinho.length,
+
+    ifsp,
+    etec,
+    semTurma,
+
+    escolas:
+      Object.keys(escolas).length,
+
+    porSerie,
 
     elegiveis,
     potenciais,

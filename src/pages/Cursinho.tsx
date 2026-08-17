@@ -10,12 +10,24 @@ import {
 interface CidadeCursinho {
   nome: string;
   alunos: number;
+  ifsp: number;
+  etec: number;
   elegiveis: number;
   potenciais: number;
 }
 
+interface SerieCursinho {
+  serie: string;
+  alunos: number;
+}
+
 interface DadosCursinho {
   total: number;
+  ifsp: number;
+  etec: number;
+  semTurma: number;
+  escolas: number;
+  porSerie: SerieCursinho[];
   elegiveis: number;
   potenciais: number;
   anoDisponivel: boolean;
@@ -56,6 +68,10 @@ export default function Cursinho() {
           titulo: "Resumo",
           itens: [
             { label: "Alunos no cursinho", valor: cursinho.total },
+            { label: "Turma IFSP", valor: cursinho.ifsp },
+            { label: "Turma ETEC", valor: cursinho.etec },
+            { label: "Sem turma informada", valor: cursinho.semTurma },
+            { label: "Escolas atendidas", valor: cursinho.escolas },
             {
               label: `Alunos do programa (${anosElegiveis})`,
               valor: anoDisponivel ? cursinho.elegiveis : "N/A",
@@ -67,10 +83,19 @@ export default function Cursinho() {
             { label: "Cidades no ranking", valor: ranking.length },
           ],
         },
+        {
+          titulo: "Alunos por série",
+          itens: cursinho.porSerie.map((item) => ({
+            label: item.serie,
+            valor: item.alunos,
+          })),
+        },
         ...ranking.map((cidade, indice) => ({
           titulo: `${indice + 1}. ${cidade.nome}`,
           itens: [
             { label: "Alunos no cursinho", valor: cidade.alunos },
+            { label: "Turma IFSP", valor: cidade.ifsp },
+            { label: "Turma ETEC", valor: cidade.etec },
             {
               label: `Alunos do programa (${anosElegiveis})`,
               valor: anoDisponivel ? cidade.elegiveis : "N/A",
@@ -119,6 +144,11 @@ export default function Cursinho() {
         <SummaryCard
           title="Alunos no cursinho"
           value={cursinho ? cursinho.total : SEM_DADO}
+          hint={
+            cursinho
+              ? `IFSP: ${cursinho.ifsp} · ETEC: ${cursinho.etec}`
+              : undefined
+          }
         />
 
         <SummaryCard
@@ -150,6 +180,10 @@ export default function Cursinho() {
                 <span className="ranking-posicao">{indice + 1}</span>
 
                 <span className="ranking-nome">{cidade.nome}</span>
+
+                <span className="ranking-detalhe">
+                  IFSP: {cidade.ifsp} · ETEC: {cidade.etec}
+                </span>
 
                 {anoDisponivel && (
                   <span className="ranking-detalhe">
