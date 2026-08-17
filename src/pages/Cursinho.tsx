@@ -43,10 +43,7 @@ interface DadosCursinho {
   cidades: CidadeCursinho[];
 
   // Temporario, ver AvisoSemSerie.
-  diagnostico?: {
-    alunosSemSerie: number;
-    cidades: { nome: string; alunos: number }[];
-  } | null;
+  diagnostico?: { alunosSemSerie: number } | null;
 }
 
 const SEM_DADO = "—";
@@ -64,9 +61,9 @@ function descreverTurmas(item: {
   semTurma: number;
 }) {
   const partes = [
+    `Ambos: ${item.ambos}`,
     `Só IFSP: ${item.somenteIfsp}`,
     `Só ETEC: ${item.somenteEtec}`,
-    `Ambos: ${item.ambos}`,
   ];
 
   if (item.semTurma > 0) {
@@ -103,9 +100,9 @@ export default function Cursinho() {
           titulo: "Resumo",
           itens: [
             { label: "Alunos no cursinho", valor: cursinho.total },
+            { label: "IFSP e ETEC", valor: cursinho.ambos },
             { label: "Só IFSP", valor: cursinho.somenteIfsp },
             { label: "Só ETEC", valor: cursinho.somenteEtec },
-            { label: "IFSP e ETEC", valor: cursinho.ambos },
             { label: "Sem turma informada", valor: cursinho.semTurma },
             { label: "Total na turma IFSP", valor: cursinho.ifsp },
             { label: "Total na turma ETEC", valor: cursinho.etec },
@@ -132,9 +129,9 @@ export default function Cursinho() {
           titulo: `${indice + 1}. ${cidade.nome}`,
           itens: [
             { label: "Alunos no cursinho", valor: cidade.alunos },
+            { label: "IFSP e ETEC", valor: cidade.ambos },
             { label: "Só IFSP", valor: cidade.somenteIfsp },
             { label: "Só ETEC", valor: cidade.somenteEtec },
-            { label: "IFSP e ETEC", valor: cidade.ambos },
             { label: "Sem turma informada", valor: cidade.semTurma },
             {
               label: `Alunos do programa (${anosElegiveis})`,
@@ -194,15 +191,17 @@ export default function Cursinho() {
           value={
             cursinho && anoDisponivel ? cursinho.potenciais : SEM_DADO
           }
+          // Sem a coluna de série o valor fica em "—", entao a linha de apoio
+          // so existe para explicar o motivo.
           hint={
-            cursinho && anoDisponivel
-              ? `${cursinho.elegiveis} alunos do programa no ${anosElegiveis}`
-              : `Depende da coluna de ano escolar (${anosElegiveis})`
+            cursinho && !anoDisponivel
+              ? `Depende da coluna de série (${anosElegiveis})`
+              : undefined
           }
         />
-      </div>
 
-      <AvisoSemSerie diagnostico={cursinho?.diagnostico} />
+        <AvisoSemSerie diagnostico={cursinho?.diagnostico} />
+      </div>
 
       <div className="section-card">
         <h3>Ranking de cidades</h3>
@@ -232,7 +231,7 @@ export default function Cursinho() {
                 )}
 
                 <span className="ranking-valor">
-                  {cidade.alunos}{" "}
+                  Total: {cidade.alunos}{" "}
                   {cidade.alunos === 1 ? "aluno" : "alunos"}
                 </span>
               </li>

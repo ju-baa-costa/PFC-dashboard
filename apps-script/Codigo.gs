@@ -1328,8 +1328,6 @@ function montarDiagnosticoCursinho(
   // anoDisponivel que o dado inteiro esta faltando.
   if (!temColunaAno) return null;
 
-  const cidades = {};
-
   let semSerie = 0;
 
   alunos.forEach(aluno => {
@@ -1337,33 +1335,12 @@ function montarDiagnosticoCursinho(
       return;
     }
 
-    if (aluno.ano !== null) return;
-
-    semSerie++;
-
-    const chave =
-      normalizarTexto(aluno.cidade) ||
-      "Não informado";
-
-    cidades[chave] =
-      (cidades[chave] || 0) + 1;
+    if (aluno.ano === null) {
+      semSerie++;
+    }
   });
 
   return {
-    alunosSemSerie: semSerie,
-
-    cidades: Object.keys(cidades)
-      .map(nome => ({
-        nome: nome,
-        alunos: cidades[nome]
-      }))
-      .sort(
-        (a, b) =>
-          b.alunos - a.alunos ||
-          a.nome.localeCompare(
-            b.nome,
-            "pt-BR"
-          )
-      )
+    alunosSemSerie: semSerie
   };
 }
