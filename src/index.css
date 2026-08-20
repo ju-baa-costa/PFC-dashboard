@@ -44,6 +44,7 @@ body {
 
 .content {
   flex: 1;
+  padding: 0 30px 30px;
 }
 
 .sidebar {
@@ -129,6 +130,95 @@ body {
   border-radius: 16px;
   padding: 20px;
   margin-top: 20px;
+}
+
+/* Os 4 cards simples ocupam uma coluna cada e o de anos finais ocupa duas,
+   entao seis colunas deixam tudo na mesma linha. */
+.home-grid {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.home-grid .summary-card {
+  padding: 18px;
+}
+
+/* Só os cards diretos da home (cidades, escolas, turmas, supervisores); os de
+   dentro do card de anos finais continuam alinhados a esquerda. */
+.home-grid > .summary-card {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+/* Fica na mesma linha dos outros cards do resumo, ocupando duas colunas para
+   caber os dois cards menores lado a lado. */
+.anos-finais-card {
+  grid-column: span 2;
+  margin-top: 0;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+}
+
+.anos-finais-titulo {
+  margin-bottom: 10px;
+}
+
+.anos-finais-grid {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+/* Os cards de dentro ficam sobre o branco do card externo, entao ganham fundo
+   e borda proprios para continuarem legiveis como cards. */
+.anos-finais-grid .summary-card {
+  background: #fafafa;
+  border: 1px solid #ddd;
+  padding: 14px;
+}
+
+.anos-finais-grid .summary-card h3 {
+  font-size: 0.95rem;
+}
+
+.anos-finais-grid .summary-card h2 {
+  font-size: 1.5rem;
+}
+
+.anos-finais-grid .summary-card:not(.summary-card-static):hover {
+  border-color: #222;
+}
+
+/* Tablet e celular: um card por linha em todas as paginas e o card duplo
+   empilhado na vertical. */
+@media (max-width: 1024px) {
+  .grid,
+  .home-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .anos-finais-card {
+    grid-column: auto;
+  }
+
+  .anos-finais-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Celular: margens e header menores para nao comer a largura da tela. */
+@media (max-width: 600px) {
+  .header {
+    padding: 14px 16px;
+  }
+
+  .content {
+    padding: 0 16px 24px;
+  }
 }
 
 .section-card-legenda {
