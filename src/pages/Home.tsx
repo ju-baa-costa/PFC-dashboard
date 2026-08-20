@@ -75,7 +75,7 @@ export default function Home() {
       onRelatorioCompleto={gerarCompleto}
       onRelatorioResumido={gerarResumido}
     >
-      <div className="grid">
+      <div className="grid home-grid">
         <SummaryCard
           title="Cidades"
           value={data.resumo.cidades}
@@ -100,11 +100,23 @@ export default function Home() {
           onClick={() => navigate("/supervisores")}
         />
 
-        <SummaryCard
-          title="Cursinho"
-          value={data.cursinho ? data.cursinho.total : "—"}
-          onClick={() => navigate("/cursinho")}
-        />
+        <section className="section-card anos-finais-card">
+          <h3 className="anos-finais-titulo">Anos Finais</h3>
+
+          <div className="anos-finais-grid">
+            <SummaryCard
+              title="Cursinho"
+              value={data.cursinho ? data.cursinho.total : "—"}
+              onClick={() => navigate("/cursinho")}
+            />
+
+            <SummaryCard
+              title="Projeto de Vida"
+              value="—"
+              hint="Em breve"
+            />
+          </div>
+        </section>
       </div>
     </Layout>
   );
