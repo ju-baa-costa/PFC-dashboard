@@ -16,6 +16,8 @@ interface Props {
   nivelAlerta?: string;
 
   mostrarDesligados?: boolean;
+
+  onClick?: () => void;
 }
 
 export default function EntityCard({
@@ -31,11 +33,15 @@ export default function EntityCard({
   taxaEvasao,
   nivelAlerta,
   mostrarDesligados = true,
+  onClick,
 }: Props) {
   const lotado =
     vagasDisponiveis !== undefined && vagasDisponiveis < 0;
   return (
-    <div className={`entity-card ${nivelAlerta}`}>
+    <div
+      className={`entity-card ${nivelAlerta} ${onClick ? "entity-card-clickable" : ""}`}
+      onClick={onClick}
+    >
       <h3>{nome}</h3>
 
       {cidade && (

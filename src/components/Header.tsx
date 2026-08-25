@@ -1,9 +1,12 @@
+import { useState } from "react";
 import {
   useNavigate,
   useLocation,
 } from "react-router-dom";
 
 import ReportButtons from "./ReportButtons";
+import LoginModal from "./LoginModal";
+import { useAuth } from "../context/AuthContext";
 
 interface Props {
   onRefresh?: () => void;
@@ -18,6 +21,8 @@ export default function Header({
 }: Props) {
   const navigate = useNavigate();
   const location = useLocation();
+  const { token, nome, logout } = useAuth();
+  const [modalAberto, setModalAberto] = useState(false);
 
   const pageTitles: Record<
     string,
@@ -34,6 +39,8 @@ export default function Header({
       "Dashboard de Supervisores",
     "/cursinho":
       "Dashboard do Cursinho",
+    "/projeto-de-vida":
+      "Projeto de Vida",
   };
 
   const currentTitle =
@@ -68,7 +75,27 @@ export default function Header({
         >
           Atualizar Dados
         </button>
+
+        {token ? (
+          <div className="auth-status">
+            <span className="auth-nome">{nome}</span>
+            <button className="pdf-btn" onClick={logout}>
+              Sair
+            </button>
+          </div>
+        ) : (
+          <button
+            className="login-btn"
+            onClick={() => setModalAberto(true)}
+          >
+            Login
+          </button>
+        )}
       </div>
+
+      {modalAberto && (
+        <LoginModal onClose={() => setModalAberto(false)} />
+      )}
     </header>
   );
 }

@@ -113,7 +113,7 @@ export default function Home() {
             <SummaryCard
               title="Projeto de Vida"
               value="—"
-              hint="Em breve"
+              onClick={() => navigate("/projeto-de-vida")}
             />
           </div>
         </section>

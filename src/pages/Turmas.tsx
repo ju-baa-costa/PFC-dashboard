@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import Layout from "../components/Layout";
 import EntityCard from "../components/EntityCard";
 import FilterPanel, { TODAS_CIDADES } from "../components/FilterPanel";
@@ -19,6 +20,7 @@ const OPCOES_ORDENACAO = [
 ];
 
 export default function Turmas() {
+  const navigate = useNavigate();
   const { data, loading, atualizar } = useDashboard();
 
   const [cidadeSelecionada, setCidadeSelecionada] = useState(TODAS_CIDADES);
@@ -83,7 +85,11 @@ export default function Turmas() {
 
       <div className="grid">
         {turmasOrdenadas.map((turma: any) => (
-          <EntityCard key={turma.nome} {...turma} />
+          <EntityCard
+            key={turma.nome}
+            {...turma}
+            onClick={() => navigate(`/turmas/${encodeURIComponent(turma.codigo)}`)}
+          />
         ))}
       </div>
     </Layout>

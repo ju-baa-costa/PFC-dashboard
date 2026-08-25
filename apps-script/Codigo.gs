@@ -70,7 +70,213 @@ function calcularTaxaEvasao(
     ).toFixed(1)
   );
 }
-function doGet() {
+// ---------------------------------------------------------------------------
+// AUTENTICACAO
+//
+// Sem servidor proprio, o "login" usa uma aba de usuarios (API_Usuarios) e
+// um token assinado (HMAC) que carrega usuario/papel/turmas + validade. Nao
+// ha sessao guardada no servidor: qualquer token com assinatura valida e
+// ainda dentro do prazo e aceito.
+//
+// Aba API_Usuarios, colunas: nome | usuario | senhaHash | papel | turmas
+// - papel: "admin" ou "professor"
+// - turmas: codigos de turma separados por virgula (so usado no futuro,
+//   pela funcionalidade de chamada; hoje qualquer login libera os nomes)
+// - senhaHash: gerado rodando gerarHash("a senha") direto no editor do
+//   Apps Script e colando o resultado na planilha - nao existe tela de
+//   cadastro de usuario.
+// ---------------------------------------------------------------------------
+
+const ABA_USUARIOS = "API_Usuarios";
+const VALIDADE_TOKEN_DIAS = 30;
+
+function segredoToken() {
+  const props = PropertiesService.getScriptProperties();
+  let segredo = props.getProperty("TOKEN_SECRET");
+
+  if (!segredo) {
+    segredo = Utilities.getUuid() + Utilities.getUuid();
+    props.setProperty("TOKEN_SECRET", segredo);
+  }
+
+  return segredo;
+}
+
+function paraHex(bytes) {
+  return bytes
+    .map(b => (b + 256).toString(16).slice(-2))
+    .join("");
+}
+
+// Rodar manualmente pelo editor do Apps Script (Executar > gerarHash, ou
+// direto no console) para gerar o valor a colar em senhaHash.
+function gerarHash(senha) {
+  const bytes = Utilities.computeDigest(
+    Utilities.DigestAlgorithm.SHA_256,
+    senha + segredoToken()
+  );
+
+  return paraHex(bytes);
+}
+
+function base64UrlEncode(texto) {
+  return Utilities.base64EncodeWebSafe(texto).replace(/=+$/, "");
+}
+
+function base64UrlDecode(texto) {
+  return Utilities
+    .newBlob(Utilities.base64DecodeWebSafe(texto))
+    .getDataAsString();
+}
+
+function assinar(texto) {
+  const bytes = Utilities.computeHmacSha256Signature(
+    texto,
+    segredoToken()
+  );
+
+  return paraHex(bytes);
+}
+
+function criarToken(usuario) {
+  const payload = {
+    usuario: usuario.usuario,
+    nome: usuario.nome,
+    papel: usuario.papel,
+    turmas: usuario.turmas,
+    exp: Date.now() + VALIDADE_TOKEN_DIAS * 24 * 60 * 60 * 1000
+  };
+
+  const payloadCodificado = base64UrlEncode(
+    JSON.stringify(payload)
+  );
+
+  return payloadCodificado + "." + assinar(payloadCodificado);
+}
+
+function validarToken(token) {
+  if (!token) return null;
+
+  const partes = String(token).split(".");
+  if (partes.length !== 2) return null;
+
+  const payloadCodificado = partes[0];
+  const assinatura = partes[1];
+
+  if (assinar(payloadCodificado) !== assinatura) {
+    return null;
+  }
+
+  let payload;
+
+  try {
+    payload = JSON.parse(base64UrlDecode(payloadCodificado));
+  } catch (erro) {
+    return null;
+  }
+
+  if (!payload.exp || Date.now() > payload.exp) {
+    return null;
+  }
+
+  return payload;
+}
+
+function indiceColunasUsuarios(cabecalho) {
+  return {
+    nome: indiceColuna(cabecalho, ["nome"]),
+    usuario: indiceColuna(cabecalho, ["usuario", "usuário", "login"]),
+    senhaHash: indiceColuna(cabecalho, ["senhahash", "senha hash", "hash"]),
+    papel: indiceColuna(cabecalho, ["papel", "role", "funcao", "função"]),
+    turmas: indiceColuna(cabecalho, ["turmas", "turma"])
+  };
+}
+
+function lerUsuarios() {
+  const aba = SpreadsheetApp
+    .getActiveSpreadsheet()
+    .getSheetByName(ABA_USUARIOS);
+
+  if (!aba) return [];
+
+  const values = aba.getDataRange().getValues();
+  if (values.length < 2) return [];
+
+  const colunas = indiceColunasUsuarios(values[0]);
+
+  return values
+    .slice(1)
+    .filter(row => normalizarTexto(row[colunas.usuario]) !== "")
+    .map(row => ({
+      nome: normalizarTexto(row[colunas.nome]),
+      usuario: normalizarTexto(row[colunas.usuario]).toLowerCase(),
+      senhaHash: normalizarTexto(row[colunas.senhaHash]),
+      papel: normalizarTexto(row[colunas.papel]).toLowerCase(),
+      turmas: normalizarTexto(row[colunas.turmas])
+        .split(",")
+        .map(t => t.trim())
+        .filter(t => t !== "")
+    }));
+}
+
+function autenticar(usuario, senha) {
+  const chave = normalizarTexto(usuario).toLowerCase();
+  const encontrado = lerUsuarios().find(u => u.usuario === chave);
+
+  if (!encontrado) return null;
+  if (gerarHash(senha) !== encontrado.senhaHash) return null;
+
+  return encontrado;
+}
+
+function respostaJson(objeto) {
+  return ContentService
+    .createTextOutput(JSON.stringify(objeto))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+// O login teria que ser POST por natureza, mas o Apps Script nao devolve
+// cabecalho CORS em respostas de doPost quando chamado via fetch() de outra
+// origem (doGet devolve normalmente - e por isso o resto da API usa GET).
+// Entao o login tambem vai por doGet, com usuario/senha na query string.
+function respostaLogin(parametros) {
+  const usuario = autenticar(
+    parametros.usuario,
+    parametros.senha
+  );
+
+  if (!usuario) {
+    return respostaJson({ erro: "Usuario ou senha invalidos" });
+  }
+
+  return respostaJson({
+    token: criarToken(usuario),
+    nome: usuario.nome,
+    papel: usuario.papel,
+    turmas: usuario.turmas
+  });
+}
+
+// Sem sessao valida, os nomes dos alunos nao saem na resposta publica.
+function turmasParaResposta(turmas, autenticado) {
+  if (autenticado) return turmas;
+
+  return turmas.map(turma => {
+    const copia = Object.assign({}, turma);
+    delete copia.alunosLista;
+    return copia;
+  });
+}
+
+function doGet(e) {
+  const parametros = (e && e.parameter) || {};
+
+  if (parametros.action === "login") {
+    return respostaLogin(parametros);
+  }
+
+  const sessao = validarToken(parametros.token);
+
   const sheet = SpreadsheetApp
     .getActiveSpreadsheet()
     .getSheetByName("API_Alunos");
@@ -167,19 +373,13 @@ function doGet() {
 
     cidades,
     escolas,
-    turmas,
+    turmas: turmasParaResposta(turmas, !!sessao),
     supervisores,
 
     cursinho
   };
 
-  return ContentService
-    .createTextOutput(
-      JSON.stringify(response)
-    )
-    .setMimeType(
-      ContentService.MimeType.JSON
-    );
+  return respostaJson(response);
 }
 
 function normalizarTexto(valor) {
@@ -1343,4 +1543,373 @@ function montarDiagnosticoCursinho(
   return {
     alunosSemSerie: semSerie
   };
+}
+
+// automação de envio do relatório para o email
+function deveEnviarRelatorioHoje() {
+  const hoje = new Date();
+
+  const diaSemana = Number(
+    Utilities.formatDate(
+      hoje,
+      Session.getScriptTimeZone(),
+      "u"
+    )
+  );
+
+  const diaMes = Number(
+    Utilities.formatDate(
+      hoje,
+      Session.getScriptTimeZone(),
+      "d"
+    )
+  );
+
+  // Segunda-feira
+  if (diaSemana !== 1) {
+    return false;
+  }
+
+  // Primeira segunda-feira do mês
+  if (diaMes >= 1 && diaMes <= 7) {
+    return true;
+  }
+
+  // Terceira segunda-feira do mês
+  if (diaMes >= 15 && diaMes <= 21) {
+    return true;
+  }
+
+  return false;
+}
+
+
+function enviarRelatorioMensalAlertas() {
+
+  // =====================================================
+  // CONFIGURAÇÕES
+  // =====================================================
+
+  const EMAILS = [
+    "jc1780489@gmail.com",
+    "Fabioleite@ufscar.br",
+    "laviniapereira.pfc@gmail.com"
+  ];
+
+  // TRUE = envia sempre que executar manualmente
+  // FALSE = respeita a regra da 1ª e 3ª segunda-feira
+  const MODO_TESTE = false;
+
+  // Durante o teste, envia SOMENTE para este email
+  const EMAIL_TESTE = "jc1780489@gmail.com";
+
+  // Define os destinatários
+  const DESTINATARIOS = MODO_TESTE
+    ? EMAIL_TESTE
+    : EMAILS.join(",");
+
+
+  // =====================================================
+  // VERIFICA SE É DIA DE ENVIO
+  // =====================================================
+
+  if (!MODO_TESTE && !deveEnviarRelatorioHoje()) {
+    Logger.log(
+      "Hoje não é a primeira nem a terceira segunda-feira do mês."
+    );
+    return;
+  }
+
+
+  // =====================================================
+  // CARREGA OS DADOS DA PLANILHA
+  // =====================================================
+
+  const sheet = SpreadsheetApp
+    .getActiveSpreadsheet()
+    .getSheetByName("API_Alunos");
+
+  if (!sheet) {
+    throw new Error(
+      'A aba "API_Alunos" não foi encontrada.'
+    );
+  }
+
+  const values = sheet.getDataRange().getValues();
+
+
+  // =====================================================
+  // TRANSFORMA OS DADOS EM OBJETOS
+  // =====================================================
+
+  const alunos = values
+    .slice(1)
+    .filter(row => {
+
+      const nome = normalizarTexto(row[0]);
+
+      return (
+        nome !== "" &&
+        nome !== "#N/A" &&
+        nome !== "#ERROR!"
+      );
+
+    })
+    .map(row => ({
+
+      nome: normalizarTexto(row[0]),
+      cidade: normalizarTexto(row[1]),
+      escola: normalizarTexto(row[2]),
+      turma: normalizarTexto(row[3]),
+      supervisor: normalizarTexto(row[4]),
+      situacao: normalizarTexto(row[5]).toLowerCase(),
+      presencas: Number(row[6]) || 0,
+      faltas: Number(row[7]) || 0,
+      aulasTotais: Number(row[8]) || 0,
+      aulasPlanejadas: Number(row[9]) || 0,
+      dataEntrada: row[10]
+
+    }));
+
+
+  // =====================================================
+  // AGRUPA AS ESCOLAS
+  // =====================================================
+
+  const escolas = agruparEscolas(alunos);
+
+
+  // =====================================================
+  // SEPARA E ORDENA OS ALERTAS
+  // MAIOR TAXA DE EVASÃO → MENOR
+  // =====================================================
+
+  const vermelhas = escolas
+    .filter(e => e.nivelAlerta === "vermelho")
+    .sort(
+      (a, b) => b.taxaEvasao - a.taxaEvasao
+    );
+
+  const amarelas = escolas
+    .filter(e => e.nivelAlerta === "amarelo")
+    .sort(
+      (a, b) => b.taxaEvasao - a.taxaEvasao
+    );
+
+
+  // =====================================================
+  // DATA DO RELATÓRIO
+  // =====================================================
+
+  const dataAtual = Utilities.formatDate(
+    new Date(),
+    Session.getScriptTimeZone(),
+    "dd/MM/yyyy HH:mm"
+  );
+
+
+  // =====================================================
+  // HTML DO EMAIL
+  // =====================================================
+
+  const html = `
+
+    <div style="
+      font-family: Arial, sans-serif;
+      max-width: 900px;
+      margin: auto;
+    ">
+
+      <h1>PFC - Relatório de Alertas</h1>
+
+      <p>
+        Relatório gerado automaticamente em
+        <strong>${dataAtual}</strong>.
+      </p>
+
+
+      <h2 style="color:#d32f2f;">
+        🔴 Escolas em Alerta Vermelho
+        (${vermelhas.length})
+      </h2>
+
+      ${
+        vermelhas.length === 0
+
+          ? `
+            <p>
+              Nenhuma escola em alerta vermelho.
+            </p>
+          `
+
+          : `
+
+            <table
+              border="1"
+              cellpadding="6"
+              cellspacing="0"
+              style="
+                border-collapse: collapse;
+                width: 100%;
+              "
+            >
+
+              <tr style="background:#ffebee;">
+
+                <th>#</th>
+                <th>Escola</th>
+                <th>Cidade</th>
+                <th>Taxa de Evasão</th>
+                <th>Alunos Ativos</th>
+                <th>Vagas</th>
+
+              </tr>
+
+              ${vermelhas.map((e, i) => `
+
+                <tr>
+
+                  <td>${i + 1}</td>
+
+                  <td>
+                    ${e.nome}
+                  </td>
+
+                  <td>
+                    ${e.cidade}
+                  </td>
+
+                  <td>
+                    <strong>
+                      ${e.taxaEvasao}%
+                    </strong>
+                  </td>
+
+                  <td>
+                    ${e.alunosAtivos}
+                  </td>
+
+                  <td>
+                    ${e.vagas}
+                  </td>
+
+                </tr>
+
+              `).join("")}
+
+            </table>
+
+          `
+      }
+
+
+      <br><br>
+
+
+      <h2 style="color:#f57c00;">
+        🟡 Escolas em Alerta Amarelo
+        (${amarelas.length})
+      </h2>
+
+      ${
+        amarelas.length === 0
+
+          ? `
+            <p>
+              Nenhuma escola em alerta amarelo.
+            </p>
+          `
+
+          : `
+
+            <table
+              border="1"
+              cellpadding="6"
+              cellspacing="0"
+              style="
+                border-collapse: collapse;
+                width: 100%;
+              "
+            >
+
+              <tr style="background:#fff8e1;">
+
+                <th>#</th>
+                <th>Escola</th>
+                <th>Cidade</th>
+                <th>Taxa de Evasão</th>
+                <th>Alunos Ativos</th>
+                <th>Vagas</th>
+
+              </tr>
+
+              ${amarelas.map((e, i) => `
+
+                <tr>
+
+                  <td>${i + 1}</td>
+
+                  <td>
+                    ${e.nome}
+                  </td>
+
+                  <td>
+                    ${e.cidade}
+                  </td>
+
+                  <td>
+                    <strong>
+                      ${e.taxaEvasao}%
+                    </strong>
+                  </td>
+
+                  <td>
+                    ${e.alunosAtivos}
+                  </td>
+
+                  <td>
+                    ${e.vagas}
+                  </td>
+
+                </tr>
+
+              `).join("")}
+
+            </table>
+
+          `
+      }
+
+
+      <br>
+
+      <p style="
+        color: gray;
+        font-size: 12px;
+      ">
+
+        Este email foi enviado automaticamente
+        pelo sistema PFC Dashboard.
+
+      </p>
+
+    </div>
+
+  `;
+
+
+  // =====================================================
+  // ENVIA O EMAIL
+  // =====================================================
+
+  MailApp.sendEmail({
+    to: DESTINATARIOS,
+    subject: `PFC - Relatório de Alertas (${dataAtual})`,
+    htmlBody: html
+  });
+
+
+  Logger.log(
+    "Relatório enviado para: " + DESTINATARIOS
+  );
 }
