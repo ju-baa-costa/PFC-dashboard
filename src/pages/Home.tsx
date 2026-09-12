@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router-dom";
 
+import EvasaoTendencia from "../components/EvasaoTendencia";
 import Layout from "../components/Layout";
 import SummaryCard from "../components/SummaryCard";
 
@@ -98,6 +99,11 @@ export default function Home() {
           title="Supervisores"
           value={data.resumo.supervisores}
           onClick={() => navigate("/supervisores")}
+        />
+
+        <EvasaoTendencia
+          historico={data.historico ?? null}
+          tendencia={data.tendencia ?? null}
         />
 
         <section className="section-card anos-finais-card">
