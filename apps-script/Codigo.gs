@@ -268,18 +268,21 @@ function turmasParaResposta(turmas, autenticado) {
   });
 }
 
-function doGet(e) {
-  const parametros = (e && e.parameter) || {};
-
-  if (parametros.action === "login") {
-    return respostaLogin(parametros);
-  }
-
-  const sessao = validarToken(parametros.token);
-
+// Leitura de API_Alunos compartilhada pelo dashboard (doGet) e pelo relatorio
+// por email. Ficava duplicada, e so o doGet foi corrigido quando a coluna
+// Serie entrou na planilha - o relatorio continuou lendo por posicao fixa e
+// passou a reportar todas as escolas como verdes. Com uma leitura so, uma
+// mudanca de coluna nao consegue mais quebrar metade do sistema.
+function lerAlunosApi() {
   const sheet = SpreadsheetApp
     .getActiveSpreadsheet()
     .getSheetByName("API_Alunos");
+
+  if (!sheet) {
+    throw new Error(
+      'A aba "API_Alunos" não foi encontrada.'
+    );
+  }
 
   const values = sheet.getDataRange().getValues();
 
@@ -323,6 +326,22 @@ function doGet(e) {
               row[colunas.serie]
             )
     }));
+
+  return { alunos, colunas };
+}
+
+
+
+function doGet(e) {
+  const parametros = (e && e.parameter) || {};
+
+  if (parametros.action === "login") {
+    return respostaLogin(parametros);
+  }
+
+  const sessao = validarToken(parametros.token);
+
+  const { alunos, colunas } = lerAlunosApi();
 
   const cidades = agruparCidades(alunos);
   const escolas = agruparEscolas(alunos);
@@ -1623,53 +1642,15 @@ function enviarRelatorioMensalAlertas() {
 
   // =====================================================
   // CARREGA OS DADOS DA PLANILHA
+  //
+  // Usa a mesma leitura do dashboard, que acha cada coluna pelo cabecalho.
+  // Enquanto o relatorio lia por posicao fixa, a coluna Serie deslocava
+  // "situacao": ninguem era contado como desligado, a taxa de evasao de
+  // toda escola caia para perto de zero e o email saia dizendo que nao
+  // havia escola em alerta vermelho nem amarelo.
   // =====================================================
 
-  const sheet = SpreadsheetApp
-    .getActiveSpreadsheet()
-    .getSheetByName("API_Alunos");
-
-  if (!sheet) {
-    throw new Error(
-      'A aba "API_Alunos" não foi encontrada.'
-    );
-  }
-
-  const values = sheet.getDataRange().getValues();
-
-
-  // =====================================================
-  // TRANSFORMA OS DADOS EM OBJETOS
-  // =====================================================
-
-  const alunos = values
-    .slice(1)
-    .filter(row => {
-
-      const nome = normalizarTexto(row[0]);
-
-      return (
-        nome !== "" &&
-        nome !== "#N/A" &&
-        nome !== "#ERROR!"
-      );
-
-    })
-    .map(row => ({
-
-      nome: normalizarTexto(row[0]),
-      cidade: normalizarTexto(row[1]),
-      escola: normalizarTexto(row[2]),
-      turma: normalizarTexto(row[3]),
-      supervisor: normalizarTexto(row[4]),
-      situacao: normalizarTexto(row[5]).toLowerCase(),
-      presencas: Number(row[6]) || 0,
-      faltas: Number(row[7]) || 0,
-      aulasTotais: Number(row[8]) || 0,
-      aulasPlanejadas: Number(row[9]) || 0,
-      dataEntrada: row[10]
-
-    }));
+  const alunos = lerAlunosApi().alunos;
 
 
   // =====================================================
