@@ -101,11 +101,6 @@ export default function Home() {
           onClick={() => navigate("/supervisores")}
         />
 
-        <EvasaoTendencia
-          historico={data.historico ?? null}
-          tendencia={data.tendencia ?? null}
-        />
-
         <section className="section-card anos-finais-card">
           <h3 className="anos-finais-titulo">Anos Finais</h3>
 
@@ -123,6 +118,11 @@ export default function Home() {
             />
           </div>
         </section>
+
+        <EvasaoTendencia
+          historico={data.historico ?? null}
+          tendencia={data.tendencia ?? null}
+        />
       </div>
     </Layout>
   );

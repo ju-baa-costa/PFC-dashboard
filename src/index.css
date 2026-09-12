@@ -508,12 +508,26 @@ body {
 .evasao-numero {
   background: #fafafa;
   border: 1px solid #ddd;
-  border-left: 6px solid #ddd;
+  border-left-width: 6px;
   border-radius: 12px;
   padding: 16px 18px;
   display: flex;
   flex-direction: column;
   gap: 4px;
+}
+
+/* As classes card-* sao definidas antes neste arquivo, entao precisam de um
+   seletor mais especifico aqui para a faixa do alerta nao virar cinza. */
+.evasao-numero.card-verde {
+  border-left-color: #22c55e;
+}
+
+.evasao-numero.card-amarelo {
+  border-left-color: #eab308;
+}
+
+.evasao-numero.card-vermelho {
+  border-left-color: #ef4444;
 }
 
 .evasao-valor {
@@ -598,6 +612,15 @@ body {
 .evasao-vazio {
   color: #555;
   padding: 12px 0;
+}
+
+/* O SVG encolhe junto com a tela, entao o texto tambem encolhe: no celular
+   12 unidades do viewBox virariam ~6px reais. Os numeros aqui sao unidades do
+   viewBox, nao pixels. */
+@media (max-width: 600px) {
+  .grafico-rotulo-eixo {
+    font-size: 20px;
+  }
 }
 
 @media (max-width: 1024px) {
