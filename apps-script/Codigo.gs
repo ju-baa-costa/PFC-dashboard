@@ -403,7 +403,10 @@ function doGet(e) {
 
     historico,
 
-    tendencia: calcularTendencia(historico)
+    tendencia: calcularTendencia(historico),
+
+    comparativoQuinzenal:
+      calcularComparativoQuinzenal(historico)
   };
 
   return respostaJson(response);
@@ -2062,11 +2065,138 @@ function calcularTendencia(pontos) {
 }
 
 
+// ---------------------------------------------------------------------------
+// COMPARATIVO QUINZENAL
+//
+// A regressao acima responde "que direcao o programa esta tomando". Esta conta
+// responde outra pergunta, mais direta: em relacao a quinzena passada, a
+// evasao caiu quantos por cento?
+//
+// E variacao RELATIVA, nao pontos percentuais: evasao de 25% que vira 20% caiu
+// 20% (5 de 25), e nao "5 p.p.". Os dois numeros descrevem a mesma mudanca, e
+// confundi-los e o jeito mais facil de exagerar ou minimizar um resultado.
+//
+// Compara a media de cada janela, e nao o valor de um dia contra o de 15 dias
+// atras: um unico dia ruim nos dois extremos inventaria uma melhora ou uma
+// piora que nao existe.
+// ---------------------------------------------------------------------------
 
-// O mesmo numero que a Home mostra, escrito em uma frase. Recebe a tendencia
-// ja calculada em vez de recalcular: e a unica forma de garantir que o email e
-// o dashboard nunca discordem.
-function montarBlocoEvolucaoEmail(historico, tendencia) {
+const DIAS_QUINZENA = 15;
+
+// Com snapshot diario cada janela tem 15 leituras. Exigir 3 tolera o gatilho
+// ter falhado alguns dias sem deixar uma janela de 1 leitura virar "media".
+const MIN_LEITURAS_QUINZENA = 3;
+
+// Menos de 1% de variacao relativa entre quinzenas e oscilacao, nao noticia.
+const LIMIAR_ESTAVEL_QUINZENAL = 1;
+
+function mediaEvasao(valores) {
+  const soma = valores.reduce(
+    (total, valor) => total + valor,
+    0
+  );
+
+  return Number(
+    (soma / valores.length).toFixed(1)
+  );
+}
+
+function calcularComparativoQuinzenal(pontos) {
+  if (!pontos || pontos.length === 0) {
+    return null;
+  }
+
+  const fim = diasDesdeEpoca(
+    pontos[pontos.length - 1].data
+  );
+
+  const atual = [];
+  const anterior = [];
+
+  pontos.forEach(ponto => {
+    const idade =
+      fim - diasDesdeEpoca(ponto.data);
+
+    if (idade < DIAS_QUINZENA) {
+      atual.push(ponto.taxaEvasao);
+    } else if (idade < DIAS_QUINZENA * 2) {
+      anterior.push(ponto.taxaEvasao);
+    }
+  });
+
+  const base = {
+    diasPorJanela: DIAS_QUINZENA,
+    leiturasAtual: atual.length,
+    leiturasAnterior: anterior.length,
+    semBase: false
+  };
+
+  const incompleto = Object.assign({}, base, {
+    suficiente: false,
+    evasaoAtual: atual.length
+      ? mediaEvasao(atual)
+      : null,
+    evasaoAnterior: anterior.length
+      ? mediaEvasao(anterior)
+      : null,
+    variacaoRelativa: null,
+    direcao: null
+  });
+
+  if (
+    atual.length < MIN_LEITURAS_QUINZENA ||
+    anterior.length < MIN_LEITURAS_QUINZENA
+  ) {
+    return incompleto;
+  }
+
+  const evasaoAtual = mediaEvasao(atual);
+  const evasaoAnterior = mediaEvasao(anterior);
+
+  // Sem evasao na quinzena anterior nao existe "caiu x%": qualquer valor
+  // dividido por zero. O programa estava cheio, e isso a tela diz com palavras.
+  if (evasaoAnterior === 0) {
+    return Object.assign({}, incompleto, {
+      evasaoAtual,
+      evasaoAnterior,
+      semBase: true
+    });
+  }
+
+  const variacaoRelativa = Number(
+    (
+      ((evasaoAnterior - evasaoAtual) /
+        evasaoAnterior) *
+      100
+    ).toFixed(1)
+  );
+
+  return Object.assign({}, base, {
+    suficiente: true,
+
+    evasaoAtual,
+    evasaoAnterior,
+
+    // Positivo = a evasao caiu = mais alunos ficaram.
+    variacaoRelativa,
+
+    direcao:
+      Math.abs(variacaoRelativa) <
+      LIMIAR_ESTAVEL_QUINZENAL
+        ? "estavel"
+        : variacaoRelativa > 0
+          ? "melhora"
+          : "piora"
+  });
+}
+
+
+
+
+// Os mesmos dois numeros que a Home mostra, escritos em frases. Recebe tudo ja
+// calculado em vez de recalcular: e a unica forma de garantir que o email e o
+// dashboard nunca discordem.
+function montarBlocoEvolucaoEmail(historico, comparativo) {
   if (historico === null) {
     return `
       <p style="color:#616161;">
@@ -2076,7 +2206,7 @@ function montarBlocoEvolucaoEmail(historico, tendencia) {
     `;
   }
 
-  if (!tendencia) {
+  if (!historico.length || !comparativo) {
     return `
       <p style="color:#616161;">
         Ainda nao ha leituras registradas.
@@ -2084,48 +2214,59 @@ function montarBlocoEvolucaoEmail(historico, tendencia) {
     `;
   }
 
-  const retencao = `
+  const ultimo = historico[historico.length - 1];
+
+  const atual = `
     <p>
-      Retencao atual:
-      <strong>${tendencia.retencaoAtual}%</strong>
-      das vagas ocupadas
-      (leitura de ${tendencia.ate}).
+      Evasao global hoje:
+      <strong>${ultimo.taxaEvasao}%</strong>
+      das vagas abertas estao vazias
+      (${ultimo.ativos} alunos ativos de
+      ${ultimo.vagas} vagas, leitura de ${ultimo.data}).
     </p>
   `;
 
-  if (!tendencia.suficiente) {
+  if (comparativo.semBase) {
     return `
-      ${retencao}
+      ${atual}
 
       <p style="color:#616161;">
-        Coleta iniciada em ${tendencia.desde}:
-        ${tendencia.pontos} leitura(s) em
-        ${tendencia.diasCobertos} dia(s). A tendencia
-        aparece a partir de ${MIN_PONTOS_TENDENCIA}
-        leituras cobrindo ${MIN_DIAS_TENDENCIA} dias.
+        Na quinzena anterior a evasao era 0%, entao nao
+        ha base para calcular de quantos por cento ela
+        variou.
       </p>
     `;
   }
 
-  const sinal =
-    tendencia.inclinacaoMensal > 0 ? "+" : "";
+  if (!comparativo.suficiente) {
+    return `
+      ${atual}
+
+      <p style="color:#616161;">
+        Ainda nao ha duas quinzenas completas para comparar
+        (${comparativo.leiturasAtual} leitura(s) nesta
+        quinzena e ${comparativo.leiturasAnterior} na
+        anterior; sao precisas
+        ${MIN_LEITURAS_QUINZENA} em cada).
+      </p>
+    `;
+  }
 
   const frase =
-    tendencia.direcao === "estavel"
-      ? "estavel no periodo"
-      : tendencia.direcao === "melhora"
-        ? `melhorando cerca de ${sinal}${tendencia.inclinacaoMensal} p.p. por mes`
-        : `piorando cerca de ${tendencia.inclinacaoMensal} p.p. por mes`;
+    comparativo.direcao === "estavel"
+      ? "praticamente igual a quinzena anterior"
+      : comparativo.direcao === "melhora"
+        ? `uma queda de ${comparativo.variacaoRelativa}% na evasao`
+        : `um aumento de ${Math.abs(comparativo.variacaoRelativa)}% na evasao`;
 
   return `
-    ${retencao}
+    ${atual}
 
     <p>
-      Tendencia: <strong>${frase}</strong>.
-      Entre ${tendencia.desde} e ${tendencia.ate}
-      a retencao variou
-      <strong>${tendencia.variacaoPontos > 0 ? "+" : ""}${tendencia.variacaoPontos} p.p.</strong>
-      (${tendencia.pontos} leituras).
+      Comparado a quinzena anterior: <strong>${frase}</strong>
+      (media de ${comparativo.evasaoAnterior}% nos 15 dias
+      anteriores contra ${comparativo.evasaoAtual}% nos 15
+      dias mais recentes).
     </p>
   `;
 }
@@ -2252,7 +2393,7 @@ function enviarRelatorioMensalAlertas() {
 
   const blocoEvolucao = montarBlocoEvolucaoEmail(
     historico,
-    calcularTendencia(historico)
+    calcularComparativoQuinzenal(historico)
   );
 
 
@@ -2288,7 +2429,7 @@ function enviarRelatorioMensalAlertas() {
 
 
       <h2 style="color:#1565c0;">
-        📈 Evolução da retenção
+        📈 Evolução da evasão
       </h2>
 
       ${blocoEvolucao}

@@ -1,11 +1,13 @@
-// A metrica que a Home mostra e a retencao sobre vagas (ativos / vagas), o
-// complemento da taxaEvasao que ja colore os cards de escola - escolhida
-// justamente para os dois numeros nunca se contradizerem na mesma tela.
+// A Home mostra dois numeros sobre a evasao do programa:
 //
-// A conta em si (regressao linear sobre a serie) vive no Apps Script e chega
-// pronta no payload. Aqui so ha formatacao: duplicar a matematica no front foi
-// exatamente o que fez o relatorio por email passar meses discordando do
-// dashboard.
+//   1. a evasao global de hoje - quanto das vagas abertas esta vazio;
+//   2. quanto por cento essa evasao caiu (ou subiu) em relacao a quinzena
+//      anterior, chamado na tela de "melhora de retencao", porque evasao menor
+//      e retencao maior.
+//
+// As duas contas vivem no Apps Script e chegam prontas no payload. Aqui so ha
+// formatacao: duplicar a matematica no front foi exatamente o que fez o
+// relatorio por email passar meses discordando do dashboard.
 
 export interface PontoHistorico {
   data: string;
@@ -22,8 +24,9 @@ export interface PontoHistorico {
   escolasVerdes: number;
 }
 
-export type DirecaoTendencia = "melhora" | "piora" | "estavel";
+export type Direcao = "melhora" | "piora" | "estavel";
 
+// Usada so para os metadados do periodo coletado (desde/ate/quantas leituras).
 export interface Tendencia {
   pontos: number;
   diasCobertos: number;
@@ -35,22 +38,30 @@ export interface Tendencia {
   suficiente: boolean;
   inclinacaoMensal: number | null;
   r2: number | null;
-  direcao: DirecaoTendencia | null;
+  direcao: Direcao | null;
 }
 
-export const MIN_PONTOS_TENDENCIA = 3;
-export const MIN_DIAS_TENDENCIA = 14;
+export interface ComparativoQuinzenal {
+  diasPorJanela: number;
+  leiturasAtual: number;
+  leiturasAnterior: number;
+  semBase: boolean;
+  suficiente: boolean;
+  evasaoAtual: number | null;
+  evasaoAnterior: number | null;
+  variacaoRelativa: number | null;
+  direcao: Direcao | null;
+}
 
-// Espelho de calcularNivelEvasao no Apps Script, escrito em termos de
-// retencao: evasao > 40 vira retencao < 60, evasao > 20 vira retencao < 80.
-// Nao reusa getCardColor de proposito - os limites batem por coincidencia
-// numerica, mas frequencia de aula e retencao de vaga sao coisas diferentes e
-// mudar um limite nao deveria mexer no outro.
-export function nivelRetencao(
-  retencao: number
+export const MIN_LEITURAS_QUINZENA = 3;
+
+// Espelho de calcularNivelEvasao no Apps Script, para a cor daqui nunca
+// discordar da cor dos cards de escola.
+export function nivelEvasao(
+  evasao: number
 ): "verde" | "amarelo" | "vermelho" {
-  if (retencao < 60) return "vermelho";
-  if (retencao < 80) return "amarelo";
+  if (evasao > 40) return "vermelho";
+  if (evasao > 20) return "amarelo";
   return "verde";
 }
 
@@ -87,70 +98,53 @@ export function formatarDataLonga(iso: string): string {
   return `${dia}/${mes}/${ano}`;
 }
 
-export interface ResumoTendencia {
-  titulo: string;
-  detalhe: string;
-  direcao: DirecaoTendencia;
-}
-
-export function resumirTendencia(
-  tendencia: Tendencia
-): ResumoTendencia | null {
-  if (!tendencia.suficiente || tendencia.inclinacaoMensal === null) {
-    return null;
-  }
-
-  const ritmo = formatarComSinal(tendencia.inclinacaoMensal);
-
-  const direcao: DirecaoTendencia = tendencia.direcao ?? "estavel";
-
-  const titulo =
-    direcao === "estavel"
-      ? "Estável no período"
-      : `${ritmo} p.p. por mês`;
-
-  const periodo = `entre ${formatarDataLonga(
-    tendencia.desde
-  )} e ${formatarDataLonga(tendencia.ate)}`;
-
-  const detalhe =
-    direcao === "estavel"
-      ? `A retenção oscilou ${formatarComSinal(
-          tendencia.variacaoPontos
-        )} p.p. ${periodo} — variação pequena demais para chamar de melhora ou piora.`
-      : direcao === "melhora"
-        ? `A retenção subiu ${formatarComSinal(
-            tendencia.variacaoPontos
-          )} p.p. ${periodo}: a cada 30 dias, cerca de ${ritmo} p.p. a mais dos alunos seguem no programa.`
-        : `A retenção caiu ${formatarComSinal(
-            tendencia.variacaoPontos
-          )} p.p. ${periodo}: a cada 30 dias, cerca de ${ritmo} p.p. dos alunos deixam de seguir no programa.`;
-
-  return { titulo, detalhe, direcao };
-}
-
-// Quanto falta para a tendencia poder ser calculada. Nos primeiros dias essa e
-// a unica frase honesta que a tela tem a dizer.
-export function faltaParaTendencia(
-  tendencia: Tendencia
+// Frase do tooltip do segundo numero, com os valores reais das duas janelas -
+// o leitor consegue refazer a conta de cabeca em vez de confiar no rotulo.
+export function explicarComparativo(
+  comparativo: ComparativoQuinzenal
 ): string {
-  const faltamPontos = Math.max(
-    0,
-    MIN_PONTOS_TENDENCIA - tendencia.pontos
-  );
+  const regra =
+    `Compara a evasão média dos últimos ${comparativo.diasPorJanela} dias ` +
+    `com a dos ${comparativo.diasPorJanela} dias anteriores: ` +
+    `(anterior − atual) ÷ anterior.`;
 
-  const faltamDias = Math.max(
-    0,
-    MIN_DIAS_TENDENCIA - tendencia.diasCobertos
-  );
+  const escala =
+    "É variação relativa, não pontos percentuais. " +
+    "Evasão menor significa retenção maior, então número positivo é bom.";
 
-  if (faltamDias > 0) {
-    return `Faltam cerca de ${faltamDias} dia(s) de coleta para calcular o ritmo.`;
+  if (comparativo.semBase) {
+    return `${regra} Na quinzena anterior a evasão foi de 0%, e não existe “caiu quantos por cento” a partir de zero.`;
   }
 
-  if (faltamPontos > 0) {
-    return `Faltam ${faltamPontos} leitura(s) para calcular o ritmo.`;
+  if (
+    !comparativo.suficiente ||
+    comparativo.variacaoRelativa === null ||
+    comparativo.evasaoAnterior === null ||
+    comparativo.evasaoAtual === null
+  ) {
+    return `${regra} Ainda não há duas quinzenas completas de leituras para comparar. ${escala}`;
   }
 
-  return "Ainda não há leituras suficientes para calcular o ritmo.";
+  const verbo =
+    comparativo.variacaoRelativa > 0 ? "queda" : "aumento";
+
+  return (
+    `${regra} Aqui: ${formatarNumero(comparativo.evasaoAnterior)}% na quinzena ` +
+    `anterior contra ${formatarNumero(comparativo.evasaoAtual)}% nesta, ` +
+    `${verbo} de ${formatarNumero(
+      Math.abs(comparativo.variacaoRelativa)
+    )}%. ${escala}`
+  );
+}
+
+// Quanto falta para os dois numeros existirem. Nas primeiras semanas essa e a
+// unica frase honesta que a tela tem a dizer.
+export function faltaParaComparativo(
+  comparativo: ComparativoQuinzenal
+): string {
+  if (comparativo.leiturasAnterior < MIN_LEITURAS_QUINZENA) {
+    return `Ainda não há uma quinzena anterior para comparar (${comparativo.leiturasAnterior} de ${MIN_LEITURAS_QUINZENA} leituras).`;
+  }
+
+  return `Faltam leituras nesta quinzena (${comparativo.leiturasAtual} de ${MIN_LEITURAS_QUINZENA}).`;
 }

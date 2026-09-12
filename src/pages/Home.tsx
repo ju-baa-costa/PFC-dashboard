@@ -122,6 +122,7 @@ export default function Home() {
         <EvasaoTendencia
           historico={data.historico ?? null}
           tendencia={data.tendencia ?? null}
+          comparativo={data.comparativoQuinzenal ?? null}
         />
       </div>
     </Layout>

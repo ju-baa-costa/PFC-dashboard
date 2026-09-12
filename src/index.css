@@ -502,7 +502,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  flex: 0 0 220px;
+  flex: 0 0 250px;
 }
 
 .evasao-numero {
@@ -530,6 +530,17 @@ body {
   border-left-color: #ef4444;
 }
 
+.evasao-rotulo {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 0.8rem;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #555;
+}
+
 .evasao-valor {
   font-size: 2.2rem;
   font-weight: bold;
@@ -541,28 +552,49 @@ body {
   color: #555;
 }
 
-.evasao-chip {
-  border-radius: 999px;
-  padding: 8px 14px;
-  font-size: 0.9rem;
-  text-align: center;
+.evasao-variacao-melhora {
+  border-left-color: #22c55e;
 }
 
-.evasao-chip-melhora {
-  background: #dcfce7;
+.evasao-variacao-melhora .evasao-valor {
   color: #166534;
 }
 
-.evasao-chip-piora {
-  background: #fee2e2;
+.evasao-variacao-piora {
+  border-left-color: #ef4444;
+}
+
+.evasao-variacao-piora .evasao-valor {
   color: #991b1b;
 }
 
-.evasao-chip-estavel,
-.evasao-chip-coletando {
-  background: #f1f5f9;
-  color: #475569;
+.evasao-variacao-estavel,
+.evasao-variacao-coletando {
+  border-left-color: #cbd5e1;
 }
+
+.evasao-variacao-coletando .evasao-valor {
+  color: #94a3b8;
+}
+
+/* O tooltip padrao tem 260px e abre para a direita; dentro da coluna estreita
+   dos numeros ele sairia da tela, entao aqui ele abre para baixo, ancorado no
+   canto esquerdo do rotulo. */
+.evasao-tooltip {
+  top: 24px;
+  left: 0;
+  width: 320px;
+  line-height: 1.5;
+
+  /* O tooltip fica dentro do rotulo, que e caixa alta e espacado: sem isto a
+     explicacao inteira sai gritando. */
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+
+
+
 
 /* min-width: 0 para o SVG poder encolher dentro do flex em vez de empurrar a
    largura do card e estourar a pagina no celular. */
@@ -588,20 +620,7 @@ body {
   font-family: Arial, sans-serif;
 }
 
-.evasao-detalhe {
-  margin-top: 16px;
-  font-size: 0.95rem;
-  color: #333;
-}
 
-.evasao-aviso {
-  margin-top: 8px;
-  font-size: 0.85rem;
-  color: #92400e;
-  background: #fef3c7;
-  border-radius: 8px;
-  padding: 8px 12px;
-}
 
 .evasao-rodape {
   margin-top: 10px;

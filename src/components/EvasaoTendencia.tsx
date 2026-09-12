@@ -1,12 +1,13 @@
 import GraficoLinha from "./GraficoLinha";
 
 import {
-  faltaParaTendencia,
+  explicarComparativo,
+  faltaParaComparativo,
   formatarComSinal,
   formatarDataLonga,
   formatarNumero,
-  nivelRetencao,
-  resumirTendencia,
+  nivelEvasao,
+  type ComparativoQuinzenal,
   type PontoHistorico,
   type Tendencia,
 } from "../utils/tendenciaEvasao";
@@ -14,6 +15,7 @@ import {
 interface Props {
   historico: PontoHistorico[] | null;
   tendencia: Tendencia | null;
+  comparativo: ComparativoQuinzenal | null;
 }
 
 const COR_POR_NIVEL: Record<string, string> = {
@@ -22,14 +24,23 @@ const COR_POR_NIVEL: Record<string, string> = {
   vermelho: "#ef4444",
 };
 
+function Ajuda({ texto }: { texto: string }) {
+  return (
+    <span className="tooltip-container">
+      ℹ️
+      <span className="tooltip-text evasao-tooltip">{texto}</span>
+    </span>
+  );
+}
+
 function Moldura({ children }: { children: React.ReactNode }) {
   return (
     <section className="section-card evasao-card">
-      <h3 className="evasao-titulo">Retenção de alunos</h3>
+      <h3 className="evasao-titulo">Evasão do programa</h3>
 
       <p className="section-card-legenda">
-        Quanto das vagas ofertadas segue ocupada por aluno ativo — a mesma conta
-        que define a cor dos cards de escola.
+        Quanto das vagas abertas está vazio hoje e como isso mudou em relação à
+        quinzena anterior. Passe o mouse no ℹ️ para ver a conta de cada número.
       </p>
 
       {children}
@@ -37,7 +48,18 @@ function Moldura({ children }: { children: React.ReactNode }) {
   );
 }
 
-export default function EvasaoTendencia({ historico, tendencia }: Props) {
+const AJUDA_EVASAO =
+  "Quantas das vagas abertas pelo programa estão vazias hoje. " +
+  "Vagas abertas = turmas × capacidade cadastrada de cada escola. " +
+  "Uma vaga fica vazia quando o aluno é desligado ou quando ela nunca chegou " +
+  "a ser preenchida — as duas coisas pesam igual aqui. " +
+  "Até 20% verde, de 21% a 40% amarelo, acima de 40% vermelho.";
+
+export default function EvasaoTendencia({
+  historico,
+  tendencia,
+  comparativo,
+}: Props) {
   // null e diferente de vazio: a aba de historico ainda nao existe na planilha,
   // entao nao ha nem o que comecar a desenhar.
   if (historico === null) {
@@ -63,13 +85,24 @@ export default function EvasaoTendencia({ historico, tendencia }: Props) {
 
   const atual = historico[historico.length - 1];
 
-  const nivel = nivelRetencao(tendencia.retencaoAtual);
+  const nivel = nivelEvasao(atual.taxaEvasao);
 
-  const resumo = resumirTendencia(tendencia);
+  // O teto de 100% na evasao ja impede ativos > vagas virar vaga negativa, mas
+  // a subtracao aqui e crua e precisa do mesmo piso.
+  const vagasVazias = Math.max(0, atual.vagas - atual.ativos);
+
+  const temComparativo =
+    comparativo !== null &&
+    comparativo.suficiente &&
+    comparativo.variacaoRelativa !== null;
+
+  const direcao = temComparativo
+    ? (comparativo as ComparativoQuinzenal).direcao ?? "estavel"
+    : "coletando";
 
   const serie = historico.map((ponto) => ({
     data: ponto.data,
-    valor: ponto.retencao,
+    valor: ponto.taxaEvasao,
   }));
 
   return (
@@ -77,24 +110,47 @@ export default function EvasaoTendencia({ historico, tendencia }: Props) {
       <div className="evasao-conteudo">
         <div className="evasao-destaque">
           <div className={`evasao-numero card-${nivel}`}>
+            <span className="evasao-rotulo">
+              Evasão global hoje
+              <Ajuda texto={AJUDA_EVASAO} />
+            </span>
+
             <span className="evasao-valor">
-              {formatarNumero(tendencia.retencaoAtual)}%
+              {formatarNumero(atual.taxaEvasao)}%
             </span>
 
             <span className="evasao-legenda">
-              {atual.ativos} alunos ativos em {atual.vagas} vagas
+              {vagasVazias} vagas vazias de {atual.vagas} abertas
             </span>
           </div>
 
-          {resumo ? (
-            <div className={`evasao-chip evasao-chip-${resumo.direcao}`}>
-              <strong>{resumo.titulo}</strong>
-            </div>
-          ) : (
-            <div className="evasao-chip evasao-chip-coletando">
-              <strong>Coletando dados</strong>
-            </div>
-          )}
+          <div className={`evasao-numero evasao-variacao-${direcao}`}>
+            <span className="evasao-rotulo">
+              Melhora de retenção
+              {comparativo && (
+                <Ajuda texto={explicarComparativo(comparativo)} />
+              )}
+            </span>
+
+            <span className="evasao-valor">
+              {temComparativo
+                ? `${formatarComSinal(
+                    (comparativo as ComparativoQuinzenal)
+                      .variacaoRelativa as number
+                  )}%`
+                : "—"}
+            </span>
+
+            <span className="evasao-legenda">
+              {temComparativo
+                ? "vs. a quinzena anterior"
+                : comparativo === null
+                  ? "sem leituras suficientes"
+                  : comparativo.semBase
+                    ? "não houve evasão na quinzena anterior"
+                    : faltaParaComparativo(comparativo)}
+            </span>
+          </div>
         </div>
 
         <div className="evasao-grafico">
@@ -107,7 +163,7 @@ export default function EvasaoTendencia({ historico, tendencia }: Props) {
             <GraficoLinha
               serie={serie}
               cor={COR_POR_NIVEL[nivel]}
-              rotulo={`Retenção de alunos de ${formatarDataLonga(
+              rotulo={`Evasão do programa de ${formatarDataLonga(
                 tendencia.desde
               )} a ${formatarDataLonga(tendencia.ate)}`}
             />
@@ -115,38 +171,10 @@ export default function EvasaoTendencia({ historico, tendencia }: Props) {
         </div>
       </div>
 
-      <p className="evasao-detalhe">
-        {resumo
-          ? resumo.detalhe
-          : `Coleta iniciada em ${formatarDataLonga(tendencia.desde)}: ${
-              tendencia.pontos
-            } leitura(s) em ${tendencia.diasCobertos} dia(s). ${faltaParaTendencia(
-              tendencia
-            )}`}
-      </p>
-
-      {resumo && tendencia.r2 !== null && tendencia.r2 < 0.3 && (
-        <p className="evasao-aviso">
-          Os números oscilam bastante em torno dessa tendência — leia o ritmo
-          como direção geral, não como previsão.
-        </p>
-      )}
-
-      {/* A planilha so conhece "ativo" e "desligado". Qualquer outra situacao
-          hoje entra na conta como aluno ativo e infla a retencao, entao a tela
-          precisa dizer isso em vez de exibir um numero limpo demais. */}
-      {atual.outrasSituacoes > 0 && (
-        <p className="evasao-aviso">
-          {atual.outrasSituacoes} aluno(s) estão numa situação fora de
-          “ativo”/“desligado” e hoje contam como ativos neste número.
-        </p>
-      )}
-
       <p className="evasao-rodape">
         {tendencia.pontos} leitura(s) entre{" "}
         {formatarDataLonga(tendencia.desde)} e{" "}
-        {formatarDataLonga(tendencia.ate)} · variação total{" "}
-        {formatarComSinal(tendencia.variacaoPontos)} p.p.
+        {formatarDataLonga(tendencia.ate)}
       </p>
     </Moldura>
   );
