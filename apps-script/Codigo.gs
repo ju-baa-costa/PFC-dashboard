@@ -331,7 +331,6 @@ function lerAlunosApi() {
 }
 
 
-
 function doGet(e) {
   const parametros = (e && e.parameter) || {};
 
@@ -368,6 +367,11 @@ function doGet(e) {
       desligados
     );
 
+  // null enquanto a aba API_Historico nao existir; a Home usa isso para
+  // explicar que a coleta comecou agora, em vez de desenhar uma linha reta
+  // no zero como se ninguem tivesse evadido.
+  const historico = lerHistorico();
+
   const response = {
     ultimaAtualizacao:
       new Date().toISOString(),
@@ -395,7 +399,11 @@ function doGet(e) {
     turmas: turmasParaResposta(turmas, !!sessao),
     supervisores,
 
-    cursinho
+    cursinho,
+
+    historico,
+
+    tendencia: calcularTendencia(historico)
   };
 
   return respostaJson(response);
@@ -1564,6 +1572,564 @@ function montarDiagnosticoCursinho(
   };
 }
 
+
+// ---------------------------------------------------------------------------
+// HISTORICO
+//
+// A API so sabe responder "como esta agora": o doGet monta tudo ao vivo e nada
+// fica guardado. Para a Home poder mostrar a evolucao da evasao, alguem precisa
+// anotar o numero de cada dia - e como a planilha nao registra quando o aluno
+// saiu, nao da para reconstruir o passado depois. Por isso o snapshot ja entra
+// no ar antes da tela existir: cada dia sem ele e um dia perdido para sempre.
+//
+// A Home vai mostrar a retencao sobre vagas (ativos / vagas), complemento da
+// taxaEvasao que ja colore os cards de escola. Por isso os ativos aqui sao
+// contados como "alunos - desligados", igual agruparEscolas faz, e nao pelo
+// filtro situacao === "ativo" que o resumo do doGet usa: as duas contas
+// divergem se existir qualquer situacao fora de ativo/desligado. Gravamos as
+// duas assim mesmo, e a diferenca entre elas em outrasSituacoes, para que essa
+// divergencia apareca na planilha em vez de virar erro silencioso no grafico.
+// ---------------------------------------------------------------------------
+
+const ABA_HISTORICO = "API_Historico";
+
+const COLUNAS_HISTORICO = [
+  "data",
+  "alunos",
+  "ativos",
+  "ativosDeclarados",
+  "desligados",
+  "outrasSituacoes",
+  "vagas",
+  "retencao",
+  "taxaEvasao",
+  "escolasVermelhas",
+  "escolasAmarelas",
+  "escolasVerdes"
+];
+
+function dataSnapshot(quando) {
+  return Utilities.formatDate(
+    quando || new Date(),
+    Session.getScriptTimeZone(),
+    "yyyy-MM-dd"
+  );
+}
+
+function abaHistorico() {
+  const planilha = SpreadsheetApp
+    .getActiveSpreadsheet();
+
+  const existente = planilha.getSheetByName(
+    ABA_HISTORICO
+  );
+
+  if (existente) return existente;
+
+  const aba = planilha.insertSheet(
+    ABA_HISTORICO
+  );
+
+  aba
+    .getRange(1, 1, 1, COLUNAS_HISTORICO.length)
+    .setValues([COLUNAS_HISTORICO])
+    .setFontWeight("bold");
+
+  aba.setFrozenRows(1);
+
+  return aba;
+}
+
+// A data vai como texto "yyyy-MM-dd" de proposito: como data de verdade, o
+// Sheets a reinterpreta conforme a locale de quem abre a planilha, e ai a
+// comparacao que evita linha duplicada passa a depender de quem abriu.
+function escreverLinhaHistorico(
+  aba,
+  indiceLinha,
+  valores
+) {
+  const destino = aba.getRange(
+    indiceLinha,
+    1,
+    1,
+    valores.length
+  );
+
+  // O formato tem que vir antes do valor: aplicado depois, a data ja teria
+  // sido convertida e o texto original estaria perdido.
+  destino
+    .getCell(1, 1)
+    .setNumberFormat("@");
+
+  destino.setValues([valores]);
+}
+
+function calcularSnapshot(alunos) {
+  const escolas = agruparEscolas(alunos);
+
+  let vagas = 0;
+  let ativos = 0;
+
+  const porAlerta = {
+    verde: 0,
+    amarelo: 0,
+    vermelho: 0
+  };
+
+  escolas.forEach(escola => {
+    vagas += escola.vagas;
+    ativos += escola.alunosAtivos;
+
+    porAlerta[escola.nivelAlerta]++;
+  });
+
+  const ativosDeclarados = alunos.filter(
+    a => a.situacao === "ativo"
+  ).length;
+
+  const desligados = alunos.filter(
+    a => a.situacao === "desligado"
+  ).length;
+
+  const taxaEvasao = calcularTaxaEvasao(
+    vagas,
+    ativos
+  );
+
+  return {
+    data: dataSnapshot(),
+
+    alunos: alunos.length,
+
+    ativos,
+    ativosDeclarados,
+    desligados,
+
+    outrasSituacoes:
+      alunos.length -
+      ativosDeclarados -
+      desligados,
+
+    vagas,
+
+    // Complemento exato da taxaEvasao para os dois nunca brigarem no relatorio.
+    // Herda o piso dela: turma acima da capacidade fica em 100%, nao em 110%.
+    retencao: Number(
+      (100 - taxaEvasao).toFixed(1)
+    ),
+
+    taxaEvasao,
+
+    escolasVermelhas: porAlerta.vermelho,
+    escolasAmarelas: porAlerta.amarelo,
+    escolasVerdes: porAlerta.verde
+  };
+}
+
+function registrarSnapshotHistorico() {
+  const snapshot = calcularSnapshot(
+    lerAlunosApi().alunos
+  );
+
+  const aba = abaHistorico();
+
+  const linha = COLUNAS_HISTORICO.map(
+    coluna => snapshot[coluna]
+  );
+
+  const ultimaLinha = aba.getLastRow();
+
+  const datas =
+    ultimaLinha < 2
+      ? []
+      : aba
+          .getRange(2, 1, ultimaLinha - 1, 1)
+          .getDisplayValues();
+
+  // Rodar de novo no mesmo dia - na mao, ou depois de uma falha - tem que
+  // corrigir a linha de hoje, nao criar uma segunda: dia repetido entorta a
+  // regressao que calcula a tendencia.
+  for (let i = 0; i < datas.length; i++) {
+    if (datas[i][0] === snapshot.data) {
+      escreverLinhaHistorico(
+        aba,
+        i + 2,
+        linha
+      );
+
+      Logger.log(
+        "Snapshot de " +
+          snapshot.data +
+          " atualizado."
+      );
+
+      return snapshot;
+    }
+  }
+
+  escreverLinhaHistorico(
+    aba,
+    ultimaLinha + 1,
+    linha
+  );
+
+  Logger.log(
+    "Snapshot de " +
+      snapshot.data +
+      " registrado."
+  );
+
+  return snapshot;
+}
+
+// Instala o gatilho diario. Rodar uma vez, na mao, pelo editor do Apps Script.
+// E idempotente: rodar de novo troca o gatilho em vez de criar um segundo.
+function criarGatilhoHistorico() {
+  ScriptApp
+    .getProjectTriggers()
+    .forEach(gatilho => {
+      if (
+        gatilho.getHandlerFunction() ===
+        "registrarSnapshotHistorico"
+      ) {
+        ScriptApp.deleteTrigger(gatilho);
+      }
+    });
+
+  ScriptApp
+    .newTrigger("registrarSnapshotHistorico")
+    .timeBased()
+    .atHour(3)
+    .everyDays(1)
+    .create();
+
+  Logger.log(
+    "Gatilho diario do historico criado (por volta das 3h)."
+  );
+}
+
+
+// Quantos dias de historico o doGet devolve. O payload ja carrega a lista
+// inteira de alunos; meio ano de pontos e de sobra para a Home desenhar a
+// linha sem dobrar o tamanho da resposta.
+const LIMITE_HISTORICO = 180;
+
+// Abaixo disso a "tendencia" seria so ruido do dia a dia virando manchete.
+const MIN_PONTOS_TENDENCIA = 3;
+const MIN_DIAS_TENDENCIA = 14;
+
+// Variacao menor que isso em um mes nao e melhora nem piora, e oscilacao.
+const LIMIAR_ESTAVEL_MENSAL = 0.3;
+
+// A data e gravada como texto, mas nada impede alguem de reformatar a coluna
+// na mao e o Sheets devolver um Date - entao aceitamos os dois.
+function normalizarDataHistorico(valor) {
+  if (valor instanceof Date) {
+    return dataSnapshot(valor);
+  }
+
+  return String(valor || "").trim();
+}
+
+function diasDesdeEpoca(data) {
+  const partes = String(data).split("-");
+
+  return Math.round(
+    Date.UTC(
+      Number(partes[0]),
+      Number(partes[1]) - 1,
+      Number(partes[2])
+    ) / 86400000
+  );
+}
+
+// Devolve null quando a aba ainda nao existe, para o front distinguir "ainda
+// nao ha historico" de "o historico e zero" - mesma convencao do cursinho.
+function lerHistorico() {
+  const aba = SpreadsheetApp
+    .getActiveSpreadsheet()
+    .getSheetByName(ABA_HISTORICO);
+
+  if (!aba) return null;
+
+  const ultimaLinha = aba.getLastRow();
+
+  if (ultimaLinha < 2) return [];
+
+  // getValues, e nao getDisplayValues: o display devolveria "57,8" numa
+  // planilha em pt-BR e todo Number() viraria NaN.
+  const valores = aba
+    .getRange(
+      1,
+      1,
+      ultimaLinha,
+      aba.getLastColumn()
+    )
+    .getValues();
+
+  const cabecalho = valores[0];
+
+  const indices = {};
+
+  COLUNAS_HISTORICO.forEach(nome => {
+    indices[nome] = indiceColuna(
+      cabecalho,
+      [nome]
+    );
+  });
+
+  if (indices.data === -1) return [];
+
+  const pontos = valores
+    .slice(1)
+    .map(linha => {
+      const ponto = {
+        data: normalizarDataHistorico(
+          linha[indices.data]
+        )
+      };
+
+      COLUNAS_HISTORICO.forEach(nome => {
+        if (nome === "data") return;
+
+        ponto[nome] =
+          indices[nome] === -1
+            ? null
+            : Number(
+                linha[indices[nome]]
+              ) || 0;
+      });
+
+      return ponto;
+    })
+    // Linha meio preenchida na mao nao pode entrar na regressao.
+    .filter(ponto =>
+      /^\d{4}-\d{2}-\d{2}$/.test(ponto.data)
+    );
+
+  pontos.sort((a, b) =>
+    a.data < b.data
+      ? -1
+      : a.data > b.data
+        ? 1
+        : 0
+  );
+
+  return pontos.slice(
+    -LIMITE_HISTORICO
+  );
+}
+
+// A tendencia e calculada aqui, e nao no front, para o email e o dashboard
+// nunca contarem historias diferentes - foi exatamente assim que o relatorio
+// passou meses dizendo que nao havia escola em alerta.
+//
+// Regressao linear simples sobre (dias, retencao). De proposito nao existe
+// previsao de data ("evasao zero em marco"): com poucos meses de dados a
+// extrapolacao vira chute com cara de certeza.
+function calcularTendencia(pontos) {
+  if (!pontos || pontos.length === 0) {
+    return null;
+  }
+
+  const primeiro = pontos[0];
+  const ultimo = pontos[pontos.length - 1];
+
+  const diasCobertos =
+    diasDesdeEpoca(ultimo.data) -
+    diasDesdeEpoca(primeiro.data);
+
+  const base = {
+    pontos: pontos.length,
+    diasCobertos,
+
+    desde: primeiro.data,
+    ate: ultimo.data,
+
+    retencaoInicial: primeiro.retencao,
+    retencaoAtual: ultimo.retencao,
+
+    variacaoPontos: Number(
+      (
+        ultimo.retencao -
+        primeiro.retencao
+      ).toFixed(1)
+    )
+  };
+
+  if (
+    pontos.length < MIN_PONTOS_TENDENCIA ||
+    diasCobertos < MIN_DIAS_TENDENCIA
+  ) {
+    return Object.assign({}, base, {
+      suficiente: false,
+      inclinacaoMensal: null,
+      r2: null,
+      direcao: null
+    });
+  }
+
+  const x0 = diasDesdeEpoca(primeiro.data);
+
+  let somaX = 0;
+  let somaY = 0;
+  let somaXY = 0;
+  let somaXX = 0;
+
+  pontos.forEach(ponto => {
+    const x =
+      diasDesdeEpoca(ponto.data) - x0;
+
+    const y = ponto.retencao;
+
+    somaX += x;
+    somaY += y;
+    somaXY += x * y;
+    somaXX += x * x;
+  });
+
+  const n = pontos.length;
+
+  const denominador =
+    n * somaXX - somaX * somaX;
+
+  if (denominador === 0) {
+    return Object.assign({}, base, {
+      suficiente: false,
+      inclinacaoMensal: null,
+      r2: null,
+      direcao: null
+    });
+  }
+
+  const inclinacaoDiaria =
+    (n * somaXY - somaX * somaY) /
+    denominador;
+
+  const intercepto =
+    (somaY - inclinacaoDiaria * somaX) / n;
+
+  const mediaY = somaY / n;
+
+  let somaResiduos = 0;
+  let somaTotal = 0;
+
+  pontos.forEach(ponto => {
+    const x =
+      diasDesdeEpoca(ponto.data) - x0;
+
+    const previsto =
+      intercepto + inclinacaoDiaria * x;
+
+    somaResiduos += Math.pow(
+      ponto.retencao - previsto,
+      2
+    );
+
+    somaTotal += Math.pow(
+      ponto.retencao - mediaY,
+      2
+    );
+  });
+
+  const inclinacaoMensal = Number(
+    (inclinacaoDiaria * 30).toFixed(2)
+  );
+
+  return Object.assign({}, base, {
+    suficiente: true,
+
+    inclinacaoMensal,
+
+    // Serie perfeitamente plana tem variacao total zero: r2 vira 1, nao 0/0.
+    r2:
+      somaTotal === 0
+        ? 1
+        : Number(
+            (
+              1 - somaResiduos / somaTotal
+            ).toFixed(3)
+          ),
+
+    direcao:
+      Math.abs(inclinacaoMensal) <
+      LIMIAR_ESTAVEL_MENSAL
+        ? "estavel"
+        : inclinacaoMensal > 0
+          ? "melhora"
+          : "piora"
+  });
+}
+
+
+
+// O mesmo numero que a Home mostra, escrito em uma frase. Recebe a tendencia
+// ja calculada em vez de recalcular: e a unica forma de garantir que o email e
+// o dashboard nunca discordem.
+function montarBlocoEvolucaoEmail(historico, tendencia) {
+  if (historico === null) {
+    return `
+      <p style="color:#616161;">
+        A coleta de historico ainda nao foi ligada
+        (rode <code>criarGatilhoHistorico</code> uma vez).
+      </p>
+    `;
+  }
+
+  if (!tendencia) {
+    return `
+      <p style="color:#616161;">
+        Ainda nao ha leituras registradas.
+      </p>
+    `;
+  }
+
+  const retencao = `
+    <p>
+      Retencao atual:
+      <strong>${tendencia.retencaoAtual}%</strong>
+      das vagas ocupadas
+      (leitura de ${tendencia.ate}).
+    </p>
+  `;
+
+  if (!tendencia.suficiente) {
+    return `
+      ${retencao}
+
+      <p style="color:#616161;">
+        Coleta iniciada em ${tendencia.desde}:
+        ${tendencia.pontos} leitura(s) em
+        ${tendencia.diasCobertos} dia(s). A tendencia
+        aparece a partir de ${MIN_PONTOS_TENDENCIA}
+        leituras cobrindo ${MIN_DIAS_TENDENCIA} dias.
+      </p>
+    `;
+  }
+
+  const sinal =
+    tendencia.inclinacaoMensal > 0 ? "+" : "";
+
+  const frase =
+    tendencia.direcao === "estavel"
+      ? "estavel no periodo"
+      : tendencia.direcao === "melhora"
+        ? `melhorando cerca de ${sinal}${tendencia.inclinacaoMensal} p.p. por mes`
+        : `piorando cerca de ${tendencia.inclinacaoMensal} p.p. por mes`;
+
+  return `
+    ${retencao}
+
+    <p>
+      Tendencia: <strong>${frase}</strong>.
+      Entre ${tendencia.desde} e ${tendencia.ate}
+      a retencao variou
+      <strong>${tendencia.variacaoPontos > 0 ? "+" : ""}${tendencia.variacaoPontos} p.p.</strong>
+      (${tendencia.pontos} leituras).
+    </p>
+  `;
+}
+
 // automação de envio do relatório para o email
 function deveEnviarRelatorioHoje() {
   const hoje = new Date();
@@ -1679,6 +2245,18 @@ function enviarRelatorioMensalAlertas() {
 
 
   // =====================================================
+  // EVOLUÇÃO (mesma fonte que alimenta a Home)
+  // =====================================================
+
+  const historico = lerHistorico();
+
+  const blocoEvolucao = montarBlocoEvolucaoEmail(
+    historico,
+    calcularTendencia(historico)
+  );
+
+
+  // =====================================================
   // DATA DO RELATÓRIO
   // =====================================================
 
@@ -1707,6 +2285,13 @@ function enviarRelatorioMensalAlertas() {
         Relatório gerado automaticamente em
         <strong>${dataAtual}</strong>.
       </p>
+
+
+      <h2 style="color:#1565c0;">
+        📈 Evolução da retenção
+      </h2>
+
+      ${blocoEvolucao}
 
 
       <h2 style="color:#d32f2f;">
