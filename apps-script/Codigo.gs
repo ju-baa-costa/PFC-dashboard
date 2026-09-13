@@ -2298,6 +2298,100 @@ function montarBlocoEvolucaoEmail(historico, comparativo) {
   `;
 }
 
+// ---------------------------------------------------------------------------
+// DIAGNOSTICO DE VAGAS
+//
+// Rodar na mao quando a evasao parecer baixa demais. So imprime agregados por
+// escola - nenhum nome de aluno - e responde as duas perguntas que decidem o
+// denominador: quantas turmas foram reconhecidas, e de onde veio a capacidade.
+// ---------------------------------------------------------------------------
+function diagnosticarVagas() {
+  const alunos = lerAlunosApi().alunos;
+
+  const mapa = {};
+
+  alunos.forEach(aluno => {
+    const escola = aluno.escola || "Não informado";
+
+    if (!mapa[escola]) {
+      mapa[escola] = {
+        codigos: {},
+        turmas: {},
+        alunos: 0,
+        desligados: 0
+      };
+    }
+
+    mapa[escola].alunos++;
+
+    if (aluno.situacao === "desligado") {
+      mapa[escola].desligados++;
+    }
+
+    mapa[escola].codigos[
+      String(aluno.turma).trim() || "(vazio)"
+    ] = true;
+
+    mapa[escola].turmas[
+      formatarNomeTurma(aluno.turma, aluno.escola)
+    ] = true;
+  });
+
+  const linhas = [];
+
+  let totalVagas = 0;
+  let totalAtivos = 0;
+  let semCapacidade = 0;
+
+  Object.keys(mapa).sort().forEach(escola => {
+    const dados = mapa[escola];
+
+    const codigos = Object.keys(dados.codigos);
+    const turmas = Object.keys(dados.turmas);
+
+    const doMapa =
+      CAPACIDADE_POR_ESCOLA[
+        normalizarTexto(escola)
+      ] !== undefined;
+
+    if (!doMapa) semCapacidade++;
+
+    const capacidade = getCapacidadeTurma(escola);
+
+    const ativos = dados.alunos - dados.desligados;
+    const vagas = turmas.length * capacidade;
+
+    totalVagas += vagas;
+    totalAtivos += ativos;
+
+    linhas.push(
+      [
+        escola,
+        "codigos=" + codigos.length + " [" + codigos.join(", ") + "]",
+        "turmas contadas=" + turmas.length,
+        "capacidade=" + capacidade + (doMapa ? " (do mapa)" : " (PADRAO 15)"),
+        "alunos=" + dados.alunos,
+        "ativos=" + ativos,
+        "vagas=" + vagas,
+        "evasao=" + calcularTaxaEvasao(vagas, ativos) + "%" +
+          (ativos > vagas ? "  <-- MAIS ATIVOS QUE VAGAS" : "")
+      ].join("\n    ")
+    );
+  });
+
+  Logger.log(
+    "=== DIAGNOSTICO DE VAGAS ===\n\n" +
+      linhas.join("\n\n") +
+      "\n\n=== TOTAIS ===" +
+      "\nvagas=" + totalVagas +
+      "\nativos=" + totalAtivos +
+      "\nevasao global=" +
+        calcularTaxaEvasao(totalVagas, totalAtivos) + "%" +
+      "\nescolas sem capacidade cadastrada (usando 15)=" +
+        semCapacidade + " de " + Object.keys(mapa).length
+  );
+}
+
 // automação de envio do relatório para o email
 function deveEnviarRelatorioHoje() {
   const hoje = new Date();
