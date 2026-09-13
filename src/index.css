@@ -583,7 +583,7 @@ body {
 .evasao-tooltip {
   top: 24px;
   left: 0;
-  width: 320px;
+  width: 230px;
   line-height: 1.5;
 
   /* O tooltip fica dentro do rotulo, que e caixa alta e espacado: sem isto a

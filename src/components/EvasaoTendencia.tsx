@@ -1,7 +1,6 @@
 import GraficoLinha from "./GraficoLinha";
 
 import {
-  explicarComparativo,
   faltaParaComparativo,
   formatarComSinal,
   formatarDataLonga,
@@ -38,22 +37,16 @@ function Moldura({ children }: { children: React.ReactNode }) {
     <section className="section-card evasao-card">
       <h3 className="evasao-titulo">Evasão do programa</h3>
 
-      <p className="section-card-legenda">
-        Quanto das vagas abertas está vazio hoje e como isso mudou em relação à
-        quinzena anterior. Passe o mouse no ℹ️ para ver a conta de cada número.
-      </p>
-
       {children}
     </section>
   );
 }
 
 const AJUDA_EVASAO =
-  "Quantas das vagas abertas pelo programa estão vazias hoje. " +
-  "Vagas abertas = turmas × capacidade cadastrada de cada escola. " +
-  "Uma vaga fica vazia quando o aluno é desligado ou quando ela nunca chegou " +
-  "a ser preenchida — as duas coisas pesam igual aqui. " +
-  "Até 20% verde, de 21% a 40% amarelo, acima de 40% vermelho.";
+  "Cálculo de evasão feito com os dados de todas as cidades.";
+
+const AJUDA_VARIACAO =
+  "O tanto de retenção que aumentou em comparação com a quinzena anterior.";
 
 export default function EvasaoTendencia({
   historico,
@@ -127,9 +120,7 @@ export default function EvasaoTendencia({
           <div className={`evasao-numero evasao-variacao-${direcao}`}>
             <span className="evasao-rotulo">
               Melhora de retenção
-              {comparativo && (
-                <Ajuda texto={explicarComparativo(comparativo)} />
-              )}
+              <Ajuda texto={AJUDA_VARIACAO} />
             </span>
 
             <span className="evasao-valor">

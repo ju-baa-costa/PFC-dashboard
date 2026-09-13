@@ -98,45 +98,6 @@ export function formatarDataLonga(iso: string): string {
   return `${dia}/${mes}/${ano}`;
 }
 
-// Frase do tooltip do segundo numero, com os valores reais das duas janelas -
-// o leitor consegue refazer a conta de cabeca em vez de confiar no rotulo.
-export function explicarComparativo(
-  comparativo: ComparativoQuinzenal
-): string {
-  const regra =
-    `Compara a evasão média dos últimos ${comparativo.diasPorJanela} dias ` +
-    `com a dos ${comparativo.diasPorJanela} dias anteriores: ` +
-    `(anterior − atual) ÷ anterior.`;
-
-  const escala =
-    "É variação relativa, não pontos percentuais. " +
-    "Evasão menor significa retenção maior, então número positivo é bom.";
-
-  if (comparativo.semBase) {
-    return `${regra} Na quinzena anterior a evasão foi de 0%, e não existe “caiu quantos por cento” a partir de zero.`;
-  }
-
-  if (
-    !comparativo.suficiente ||
-    comparativo.variacaoRelativa === null ||
-    comparativo.evasaoAnterior === null ||
-    comparativo.evasaoAtual === null
-  ) {
-    return `${regra} Ainda não há duas quinzenas completas de leituras para comparar. ${escala}`;
-  }
-
-  const verbo =
-    comparativo.variacaoRelativa > 0 ? "queda" : "aumento";
-
-  return (
-    `${regra} Aqui: ${formatarNumero(comparativo.evasaoAnterior)}% na quinzena ` +
-    `anterior contra ${formatarNumero(comparativo.evasaoAtual)}% nesta, ` +
-    `${verbo} de ${formatarNumero(
-      Math.abs(comparativo.variacaoRelativa)
-    )}%. ${escala}`
-  );
-}
-
 // Quanto falta para os dois numeros existirem. Nas primeiras semanas essa e a
 // unica frase honesta que a tela tem a dizer.
 export function faltaParaComparativo(
