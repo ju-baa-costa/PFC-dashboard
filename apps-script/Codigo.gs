@@ -1619,19 +1619,46 @@ function dataSnapshot(quando) {
   );
 }
 
+// Garante a aba E o cabecalho. Escrever o cabecalho so ao criar a aba nao
+// bastava: se ela ja existisse - criada na mao, ou por uma execucao que morreu
+// entre o insertSheet e a escrita - os snapshots caiam na linha 1 sem nome
+// nenhum, e a leitura seguinte tomava essa linha de dados por cabecalho.
 function abaHistorico() {
   const planilha = SpreadsheetApp
     .getActiveSpreadsheet();
 
-  const existente = planilha.getSheetByName(
+  let aba = planilha.getSheetByName(
     ABA_HISTORICO
   );
 
-  if (existente) return existente;
+  if (!aba) {
+    aba = planilha.insertSheet(
+      ABA_HISTORICO
+    );
+  }
 
-  const aba = planilha.insertSheet(
-    ABA_HISTORICO
+  const largura = Math.max(
+    1,
+    aba.getLastColumn()
   );
+
+  const primeiraLinha = aba
+    .getRange(1, 1, 1, largura)
+    .getValues()[0];
+
+  // Procura pelo nome, nao pela posicao: cabecalho reordenado na mao continua
+  // valido, porque lerHistorico() tambem acha as colunas pelo nome.
+  if (
+    indiceColuna(primeiraLinha, ["data"]) !== -1
+  ) {
+    return aba;
+  }
+
+  // Ja ha dados sem cabecalho (o caso acima): empurra tudo para baixo em vez
+  // de sobrescrever a leitura que ja tinha sido gravada.
+  if (aba.getLastRow() > 0) {
+    aba.insertRowBefore(1);
+  }
 
   aba
     .getRange(1, 1, 1, COLUNAS_HISTORICO.length)
