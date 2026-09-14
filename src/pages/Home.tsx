@@ -1,6 +1,5 @@
 import { useNavigate } from "react-router-dom";
 
-import EvasaoTendencia from "../components/EvasaoTendencia";
 import Layout from "../components/Layout";
 import SummaryCard from "../components/SummaryCard";
 
@@ -118,12 +117,6 @@ export default function Home() {
             />
           </div>
         </section>
-
-        <EvasaoTendencia
-          historico={data.historico ?? null}
-          tendencia={data.tendencia ?? null}
-          comparativo={data.comparativoQuinzenal ?? null}
-        />
       </div>
     </Layout>
   );
