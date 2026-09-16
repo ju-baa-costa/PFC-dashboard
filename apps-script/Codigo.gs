@@ -353,6 +353,15 @@ function doGet(e) {
     colunas.serie !== -1
   );
 
+  // A lista nominal do 9o ano so sai para admin - ver o comentario do bloco
+  // PROJETO DE VIDA. O papel vem assinado dentro do token, entao nao da para
+  // o front pedir a lista dizendo que e admin.
+  const projetoDeVida = montarProjetoDeVida(
+    alunos,
+    colunas.serie !== -1,
+    !!sessao && sessao.papel === "admin"
+  );
+
   const ativos = alunos.filter(
     a => a.situacao === "ativo"
   ).length;
@@ -400,6 +409,8 @@ function doGet(e) {
     supervisores,
 
     cursinho,
+
+    projetoDeVida,
 
     historico,
 
@@ -1572,6 +1583,157 @@ function montarDiagnosticoCursinho(
 
   return {
     alunosSemSerie: semSerie
+  };
+}
+
+// ---------------------------------------------------------------------------
+// PROJETO DE VIDA
+//
+// A pagina acompanha o 9o ano: quem esta nele agora, quem chega nele no ano
+// que vem (o 8o ano de hoje) e quanto isso representa do programa inteiro.
+//
+// A lista nominal so sai para sessao de admin. O resto da API entrega nomes
+// para qualquer token (turmasParaResposta), mas aqui e uma lista unica com
+// cidade e escola de cada aluno do 9o ano - um cadastro, nao um detalhe de
+// turma -, entao vale o corte mais estreito.
+//
+// Como todo o resto que depende de serie, devolve null inteiro quando a coluna
+// nao existe: zero aqui seria lido como "nenhum aluno no 9o ano".
+// ---------------------------------------------------------------------------
+
+const ANO_PROJETO_DE_VIDA = 9;
+
+function ordenarPorNomePt(itens) {
+  return itens.sort(
+    (a, b) => String(a.nome).localeCompare(
+      String(b.nome),
+      "pt-BR"
+    )
+  );
+}
+
+function montarProjetoDeVida(
+  alunos,
+  temColunaAno,
+  ehAdmin
+) {
+  if (!temColunaAno) {
+    return null;
+  }
+
+  const ativos = alunos.filter(
+    a => a.situacao === "ativo"
+  );
+
+  const noAno = ativos.filter(
+    a => a.ano === ANO_PROJETO_DE_VIDA
+  );
+
+  // Quem esta no 8o ano hoje e o 9o ano do ano que vem. E projecao, nao
+  // matricula: quem evadir ou repetir nao chega la. O front diz isso na tela.
+  const proximoAno = ativos.filter(
+    a => a.ano === ANO_PROJETO_DE_VIDA - 1
+  ).length;
+
+  const cidades = {};
+  const escolas = {};
+
+  noAno.forEach(aluno => {
+    const nomeCidade =
+      normalizarTexto(aluno.cidade) ||
+      "Não informada";
+
+    const nomeEscola =
+      normalizarTexto(aluno.escola) ||
+      "Não informada";
+
+    const chaveCidade =
+      chaveComparacao(nomeCidade);
+
+    if (!cidades[chaveCidade]) {
+      cidades[chaveCidade] = {
+        nome: nomeCidade,
+        alunos: 0
+      };
+    }
+
+    cidades[chaveCidade].alunos++;
+
+    // A escola entra chaveada junto com a cidade porque nome de escola se
+    // repete entre municipios ("EE Monteiro Lobato" existe em mais de um).
+    // Sem a cidade na chave, as duas virariam um card so e o filtro de uma
+    // puxaria os alunos da outra.
+    const chaveEscola =
+      chaveCidade + "|" +
+      chaveComparacao(nomeEscola);
+
+    if (!escolas[chaveEscola]) {
+      escolas[chaveEscola] = {
+        nome: nomeEscola,
+        cidade: nomeCidade,
+        alunos: 0
+      };
+    }
+
+    escolas[chaveEscola].alunos++;
+  });
+
+  const totalAtivos = ativos.length;
+
+  // Ativo sem serie nao entra em nenhuma das contas acima e some da tela.
+  // Enquanto a coluna nao estiver toda preenchida, esse numero e o unico
+  // aviso de que o 9o ano pode estar subcontado.
+  const semSerie = ativos.filter(
+    a => a.ano === null
+  ).length;
+
+  return {
+    ano: ANO_PROJETO_DE_VIDA,
+
+    noAno: noAno.length,
+    proximoAno,
+
+    totalAtivos,
+
+    percentualDoPrograma:
+      totalAtivos > 0
+        ? Number(
+            (
+              noAno.length * 100 /
+              totalAtivos
+            ).toFixed(1)
+          )
+        : null,
+
+    alunosSemSerie: semSerie,
+
+    cidades: ordenarPorNomePt(
+      Object.keys(cidades).map(
+        chave => cidades[chave]
+      )
+    ),
+
+    escolas: ordenarPorNomePt(
+      Object.keys(escolas).map(
+        chave => escolas[chave]
+      )
+    ),
+
+    // null distingue "voce nao pode ver a lista" de "nao ha ninguem no 9o
+    // ano" - a pagina precisa dos dois para escolher a mensagem certa.
+    alunos: ehAdmin
+      ? ordenarPorNomePt(
+          noAno.map(aluno => ({
+            nome: aluno.nome,
+            cidade:
+              normalizarTexto(aluno.cidade) ||
+              "Não informada",
+            escola:
+              normalizarTexto(aluno.escola) ||
+              "Não informada"
+          }))
+        )
+      : null
   };
 }
 
