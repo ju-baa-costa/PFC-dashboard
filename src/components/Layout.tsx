@@ -1,4 +1,5 @@
 import Header from "./Header";
+import Tarja from "../demo/Tarja";
 
 interface Props {
   children: React.ReactNode;
@@ -20,6 +21,8 @@ export default function Layout({
         onRelatorioCompleto={onRelatorioCompleto}
         onRelatorioResumido={onRelatorioResumido}
       />
+
+      <Tarja />
 
       <main className="content">
         {children}
