@@ -481,3 +481,90 @@ body {
   gap: 10px;
   margin-top: 8px;
 }
+/* ---------------------------------------------------------------------------
+   PROJETO DE VIDA
+   --------------------------------------------------------------------------- */
+
+/* Os tres cards de resumo dividem a largura inteira da pagina. O .grid padrao
+   usa auto-fill de 250px, que com tres cards deixaria um vao vazio a direita
+   nas telas largas. */
+.pdv-resumo-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.pdv-aviso {
+  margin-top: 12px;
+  margin-bottom: 0;
+}
+
+/* As duas metades do filtro: cidades a esquerda, escolas a direita. */
+.pdv-filtros {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px 24px;
+}
+
+.pdv-filtro {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+/* A contagem vive dentro do chip, entao precisa de um fundo proprio para
+   continuar legivel quando o chip fica preto no estado ativo. */
+.chip-contagem {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: #f0f0f0;
+  color: #222;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.pdv-tabela {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.pdv-tabela th {
+  padding: 8px 12px 8px 0;
+  border-bottom: 1px solid #ddd;
+  font-size: 0.85rem;
+  color: #555;
+  font-weight: 600;
+}
+
+.pdv-tabela td {
+  padding: 10px 12px 10px 0;
+  border-bottom: 1px solid #eee;
+}
+
+.pdv-tabela tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* Vem depois do bloco de 1024px la de cima, que casa .grid por tabela e
+   voltaria a valer sobre .pdv-resumo-grid por ser a regra mais tardia. */
+@media (max-width: 1024px) {
+  .pdv-resumo-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .pdv-filtros {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Celular: a tabela rola sozinha em vez de espremer o nome da escola numa
+   coluna de duas letras. */
+@media (max-width: 600px) {
+  .pdv-tabela {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+}
