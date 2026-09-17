@@ -95,7 +95,7 @@ export default function ProjetoDeVida() {
 
           <p className="section-card-legenda">
             A lista do 9º ano está disponível apenas para contas de
-            administrador. Você está logado como {nome}.
+            administrador. Você entrou como {nome}.
           </p>
         </div>
       </Layout>
