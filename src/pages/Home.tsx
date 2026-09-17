@@ -112,7 +112,9 @@ export default function Home() {
 
             <SummaryCard
               title="Projeto de Vida"
-              value="—"
+              value={
+                data.projetoDeVida ? data.projetoDeVida.noAno : "—"
+              }
               onClick={() => navigate("/projeto-de-vida")}
             />
           </div>
