@@ -1,5 +1,4 @@
 import { MODO_DEMO } from "../demo/modo";
-import { respostaDemo } from "../demo/dados";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -11,6 +10,10 @@ const TOKEN_DEMO_PROFESSOR = "demo:professor";
 
 export async function getDashboardData(token?: string | null) {
   if (MODO_DEMO) {
+    // import() em vez de import estatico: assim os dados de mentira viram um
+    // chunk a parte, que o build de producao nem chega a gerar.
+    const { respostaDemo } = await import("../demo/dados");
+
     return respostaDemo(MODO_DEMO, token === TOKEN_DEMO_ADMIN);
   }
 

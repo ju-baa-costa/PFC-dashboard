@@ -16,20 +16,25 @@
 // Ligado, a tela ganha uma tarja: numero inventado que passa por real e um
 // print dele numa reuniao e exatamente o tipo de erro silencioso que este
 // projeto ja pagou caro.
+//
+// O valor tem que bater exato (sem espaco em volta): quem compara e o
+// bundler, no build, nao o codigo rodando.
 // ---------------------------------------------------------------------------
 
 export type ModoDemo = "completo" | "sem-serie" | "api-antiga";
 
-const VALOR = String(
-  import.meta.env.VITE_MODO_DEMO ?? ""
-).trim();
+// A comparacao e literal de proposito. O Vite troca import.meta.env por uma
+// constante no build, e so assim o Rollup consegue dobrar isto em `null` e
+// apagar o `if (MODO_DEMO)` inteiro do api.ts - junto com o import dos dados
+// de mentira. Um Record indexado por variavel, que era como estava antes, ele
+// nao consegue resolver, e os 25 nomes inventados iam parar no site publicado.
+const VALOR = import.meta.env.VITE_MODO_DEMO;
 
-const APELIDOS: Record<string, ModoDemo> = {
-  "1": "completo",
-  true: "completo",
-  completo: "completo",
-  "sem-serie": "sem-serie",
-  "api-antiga": "api-antiga",
-};
-
-export const MODO_DEMO: ModoDemo | null = APELIDOS[VALOR] ?? null;
+export const MODO_DEMO: ModoDemo | null =
+  VALOR === "1" || VALOR === "true" || VALOR === "completo"
+    ? "completo"
+    : VALOR === "sem-serie"
+      ? "sem-serie"
+      : VALOR === "api-antiga"
+        ? "api-antiga"
+        : null;
