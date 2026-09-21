@@ -1589,19 +1589,28 @@ function montarDiagnosticoCursinho(
 // ---------------------------------------------------------------------------
 // PROJETO DE VIDA
 //
-// A pagina acompanha o 9o ano: quem esta nele agora, quem chega nele no ano
-// que vem (o 8o ano de hoje) e quanto isso representa do programa inteiro.
+// A pagina acompanha os anos finais do fundamental: quem esta no 8o e no 9o
+// ano agora, com a lista de cada um. O 8o ano de hoje e a projecao do 9o do
+// ano que vem - quem evadir ou repetir nao chega la -, e a tela diz isso.
+//
+// As duas series saem prontas na mesma resposta porque o front so alterna
+// entre elas: buscar de novo a cada clique no card seria uma ida ao Apps
+// Script para um dado que ja estava calculado aqui.
 //
 // A lista nominal so sai para sessao de admin. O resto da API entrega nomes
 // para qualquer token (turmasParaResposta), mas aqui e uma lista unica com
-// cidade e escola de cada aluno do 9o ano - um cadastro, nao um detalhe de
-// turma -, entao vale o corte mais estreito.
+// cidade e escola de cada aluno - um cadastro, nao um detalhe de turma -,
+// entao vale o corte mais estreito.
 //
 // Como todo o resto que depende de serie, devolve null inteiro quando a coluna
 // nao existe: zero aqui seria lido como "nenhum aluno no 9o ano".
 // ---------------------------------------------------------------------------
 
 const ANO_PROJETO_DE_VIDA = 9;
+
+// Da mais nova para a mais velha nao: a tela mostra os cards nesta ordem, e
+// 8o antes de 9o e como a escola fala.
+const ANOS_PROJETO_DE_VIDA = [8, 9];
 
 function ordenarPorNomePt(itens) {
   return itens.sort(
@@ -1612,33 +1621,37 @@ function ordenarPorNomePt(itens) {
   );
 }
 
-function montarProjetoDeVida(
-  alunos,
-  temColunaAno,
+// Uma serie so: os alunos ativos daquele ano, agrupados por cidade e por
+// escola, mais a fatia que ela representa do programa.
+//
+// Esta funcao e o unico lugar que conta aluno por serie. Quando o 8o ano
+// entrou na tela, a tentacao era somar os 8os anos num contador a parte e
+// deixar o agrupamento so para o 9o - e ai o numero do card e o tamanho da
+// lista viram duas contas diferentes, livres para divergir.
+function resumirSerieProjetoDeVida(
+  ativos,
+  ano,
+  totalAtivos,
   ehAdmin
 ) {
-  if (!temColunaAno) {
-    return null;
-  }
-
-  const ativos = alunos.filter(
-    a => a.situacao === "ativo"
+  const naSerie = ativos.filter(
+    a => a.ano === ano
   );
-
-  const noAno = ativos.filter(
-    a => a.ano === ANO_PROJETO_DE_VIDA
-  );
-
-  // Quem esta no 8o ano hoje e o 9o ano do ano que vem. E projecao, nao
-  // matricula: quem evadir ou repetir nao chega la. O front diz isso na tela.
-  const proximoAno = ativos.filter(
-    a => a.ano === ANO_PROJETO_DE_VIDA - 1
-  ).length;
 
   const cidades = {};
   const escolas = {};
 
-  noAno.forEach(aluno => {
+  // Guarda a chave de cada aluno para, no fim, devolver a lista com o mesmo
+  // nome de cidade e escola que foi para os chips.
+  //
+  // Antes a lista saia com a grafia crua da planilha. Como o agrupamento
+  // compara por chaveComparacao, "SAO ROQUE" e "São Roque" viravam um chip so
+  // com dois alunos - mas o filtro do front casa texto com texto, e clicar no
+  // chip mostrava um aluno so. O chip dizia 2 e a tabela mostrava 1, sem erro
+  // nenhum na tela.
+  const listados = [];
+
+  naSerie.forEach(aluno => {
     const nomeCidade =
       normalizarTexto(aluno.cidade) ||
       "Não informada";
@@ -1676,36 +1689,28 @@ function montarProjetoDeVida(
     }
 
     escolas[chaveEscola].alunos++;
+
+    listados.push({
+      nome: aluno.nome,
+      chaveCidade,
+      chaveEscola
+    });
   });
 
-  const totalAtivos = ativos.length;
-
-  // Ativo sem serie nao entra em nenhuma das contas acima e some da tela.
-  // Enquanto a coluna nao estiver toda preenchida, esse numero e o unico
-  // aviso de que o 9o ano pode estar subcontado.
-  const semSerie = ativos.filter(
-    a => a.ano === null
-  ).length;
-
   return {
-    ano: ANO_PROJETO_DE_VIDA,
+    ano,
 
-    noAno: noAno.length,
-    proximoAno,
-
-    totalAtivos,
+    noAno: naSerie.length,
 
     percentualDoPrograma:
       totalAtivos > 0
         ? Number(
             (
-              noAno.length * 100 /
+              naSerie.length * 100 /
               totalAtivos
             ).toFixed(1)
           )
         : null,
-
-    alunosSemSerie: semSerie,
 
     cidades: ordenarPorNomePt(
       Object.keys(cidades).map(
@@ -1719,21 +1724,84 @@ function montarProjetoDeVida(
       )
     ),
 
-    // null distingue "voce nao pode ver a lista" de "nao ha ninguem no 9o
-    // ano" - a pagina precisa dos dois para escolher a mensagem certa.
+    // null distingue "voce nao pode ver a lista" de "nao ha ninguem nesta
+    // serie" - a pagina precisa dos dois para escolher a mensagem certa.
     alunos: ehAdmin
       ? ordenarPorNomePt(
-          noAno.map(aluno => ({
+          listados.map(aluno => ({
             nome: aluno.nome,
             cidade:
-              normalizarTexto(aluno.cidade) ||
-              "Não informada",
+              cidades[aluno.chaveCidade].nome,
             escola:
-              normalizarTexto(aluno.escola) ||
-              "Não informada"
+              escolas[aluno.chaveEscola].nome
           }))
         )
       : null
+  };
+}
+
+function montarProjetoDeVida(
+  alunos,
+  temColunaAno,
+  ehAdmin
+) {
+  if (!temColunaAno) {
+    return null;
+  }
+
+  const ativos = alunos.filter(
+    a => a.situacao === "ativo"
+  );
+
+  const totalAtivos = ativos.length;
+
+  const series = ANOS_PROJETO_DE_VIDA.map(
+    ano => resumirSerieProjetoDeVida(
+      ativos,
+      ano,
+      totalAtivos,
+      ehAdmin
+    )
+  );
+
+  const serieNona = series.filter(
+    s => s.ano === ANO_PROJETO_DE_VIDA
+  )[0];
+
+  const serieOitava = series.filter(
+    s => s.ano === ANO_PROJETO_DE_VIDA - 1
+  )[0];
+
+  // Ativo sem serie nao entra em nenhuma das contas acima e some da tela.
+  // Enquanto a coluna nao estiver toda preenchida, esse numero e o unico
+  // aviso de que as series podem estar subcontadas.
+  const semSerie = ativos.filter(
+    a => a.ano === null
+  ).length;
+
+  return {
+    // Os campos soltos abaixo sao os de antes do 8o ano entrar na tela, e
+    // estao aqui porque a Home le `noAno` e porque um front ainda nao
+    // atualizado continua funcionando contra esta versao da API. Sao copias
+    // do que ja esta em `series`, nunca uma segunda conta: se virarem conta
+    // propria, um dia o card e a lista discordam.
+    ano: ANO_PROJETO_DE_VIDA,
+
+    noAno: serieNona.noAno,
+    proximoAno: serieOitava.noAno,
+
+    totalAtivos,
+
+    percentualDoPrograma:
+      serieNona.percentualDoPrograma,
+
+    alunosSemSerie: semSerie,
+
+    cidades: serieNona.cidades,
+    escolas: serieNona.escolas,
+    alunos: serieNona.alunos,
+
+    series
   };
 }
 

@@ -7,6 +7,7 @@ const DESCRICAO: Record<string, string> = {
   completo: "dados completos",
   "sem-serie": "planilha sem a coluna de série",
   "api-antiga": "API publicada sem o Projeto de Vida",
+  "sem-oitavo": "API publicada sem o 8º ano",
 };
 
 export default function Tarja() {

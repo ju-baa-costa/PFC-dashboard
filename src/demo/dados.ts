@@ -16,8 +16,10 @@
 // - escolas homonimas em cidades diferentes ("EE Monteiro Lobato")
 // - supervisores nas tres faixas de frequencia
 // - cidade com um unico aluno no 9o ano (singular na tela)
+// - cidade que so existe numa das series (Votorantim nao tem 8o ano), para
+//   conferir que os chips trocam junto com o card de serie
 // - nomes acentuados, para conferir a ordem alfabetica
-// - alunos ativos sem serie, que ficam de fora das contas do 9o ano
+// - alunos ativos sem serie, que ficam de fora das contas das duas series
 // ---------------------------------------------------------------------------
 
 // Nome de escola se repete entre municipios de verdade, e agruparEscolas
@@ -54,23 +56,77 @@ const NOMES_NONO_ANO = [
   ["Thiago Aparício Neves", "Sorocaba", ESCOLA_HOMONIMA],
 ] as const;
 
+const NOMES_OITAVO_ANO = [
+  ["Antônio Vilar Prates", "São Roque", ESCOLA_HOMONIMA],
+  ["Aurora Gentil Paz", "Ibiúna", "EE Cecília Meireles"],
+  ["Benício Fagundes Rios", "Sorocaba", ESCOLA_HOMONIMA],
+  ["Clarice Andrade Bueno", "São Roque", ESCOLA_HOMONIMA],
+  ["Davi Lucca Serrano", "Sorocaba", "EE Paulo Freire"],
+  ["Emanuelly Saraiva Pilar", "Ibiúna", "EE Cecília Meireles"],
+  ["Enzo Gabriel Portela", "São Roque", ESCOLA_HOMONIMA],
+  ["Giovanna Teles Ramires", "Ibiúna", "EE Cecília Meireles"],
+  ["Helena Cordeiro Brasil", "São Roque", ESCOLA_HOMONIMA],
+  ["Isaac Villaça Moreno", "Sorocaba", ESCOLA_HOMONIMA],
+  ["Joana Darc Figueiró", "Ibiúna", "EE Cecília Meireles"],
+  ["Kauã Bezerra Tinoco", "Sorocaba", "EE Paulo Freire"],
+  ["Lorena Pontes Amaral", "São Roque", ESCOLA_HOMONIMA],
+  ["Miguel Arcanjo Duarte", "Ibiúna", "EE Cecília Meireles"],
+  ["Nicolas Vieira Sampaio", "Sorocaba", ESCOLA_HOMONIMA],
+  ["Olívia Marçal Bastos", "São Roque", ESCOLA_HOMONIMA],
+  ["Pietra Guimarães Sodré", "Ibiúna", "EE Cecília Meireles"],
+  ["Rodrigo Yuji Nakamura", "Sorocaba", "EE Paulo Freire"],
+  ["Valentina Uchôa Lins", "São Roque", ESCOLA_HOMONIMA],
+] as const;
+
 // O backend ja entrega ordenado; ordenar aqui e so para a lista de mentira
 // nao depender de eu ter digitado os nomes na ordem certa.
-const ALUNOS_NONO_ANO = NOMES_NONO_ANO.map(
-  ([nome, cidade, escola]) => ({ nome, cidade, escola })
-).sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
+function ordenados(
+  nomes: ReadonlyArray<readonly [string, string, string]>
+) {
+  return nomes
+    .map(([nome, cidade, escola]) => ({ nome, cidade, escola }))
+    .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
+}
 
-const PROJETO_DE_VIDA = {
+const ALUNOS_NONO_ANO = ordenados(NOMES_NONO_ANO);
+const ALUNOS_OITAVO_ANO = ordenados(NOMES_OITAVO_ANO);
+
+// As duas series como a API responde em `projetoDeVida.series`: cada uma com
+// os proprios chips de cidade e escola, porque o card de serie e o que decide
+// o que aparece nos filtros e na tabela.
+//
+// As contagens estao digitadas na mao, como o resto deste arquivo - mas elas
+// tem que bater com as listas de nomes acima. Chip dizendo 7 e tabela
+// mostrando 6 e exatamente a divergencia que a tela existe para nao ter.
+const SERIE_OITAVO_ANO = {
+  ano: 8,
+
+  noAno: 19,
+
+  percentualDoPrograma: 22.9,
+
+  cidades: [
+    { nome: "Ibiúna", alunos: 6 },
+    { nome: "São Roque", alunos: 7 },
+    { nome: "Sorocaba", alunos: 6 },
+  ],
+
+  escolas: [
+    { nome: "EE Cecília Meireles", cidade: "Ibiúna", alunos: 6 },
+    { nome: ESCOLA_HOMONIMA, cidade: "São Roque", alunos: 7 },
+    { nome: ESCOLA_HOMONIMA, cidade: "Sorocaba", alunos: 3 },
+    { nome: "EE Paulo Freire", cidade: "Sorocaba", alunos: 3 },
+  ],
+
+  alunos: ALUNOS_OITAVO_ANO,
+};
+
+const SERIE_NONO_ANO = {
   ano: 9,
 
   noAno: 25,
-  proximoAno: 19,
-
-  totalAtivos: 83,
 
   percentualDoPrograma: 30.1,
-
-  alunosSemSerie: 3,
 
   cidades: [
     { nome: "Ibiúna", alunos: 5 },
@@ -88,6 +144,29 @@ const PROJETO_DE_VIDA = {
   ],
 
   alunos: ALUNOS_NONO_ANO,
+};
+
+// Os campos soltos sao os que a API mantem para a Home (`noAno`) e para um
+// front mais velho que o Apps Script publicado. Aqui eles saem de
+// SERIE_NONO_ANO pelo mesmo motivo que saem no backend: copia, nunca uma
+// segunda conta.
+const PROJETO_DE_VIDA = {
+  ano: SERIE_NONO_ANO.ano,
+
+  noAno: SERIE_NONO_ANO.noAno,
+  proximoAno: SERIE_OITAVO_ANO.noAno,
+
+  totalAtivos: 83,
+
+  percentualDoPrograma: SERIE_NONO_ANO.percentualDoPrograma,
+
+  alunosSemSerie: 3,
+
+  cidades: SERIE_NONO_ANO.cidades,
+  escolas: SERIE_NONO_ANO.escolas,
+  alunos: SERIE_NONO_ANO.alunos,
+
+  series: [SERIE_OITAVO_ANO, SERIE_NONO_ANO],
 };
 
 const TURMAS = [
@@ -434,7 +513,7 @@ const RESUMO = {
 };
 
 export function respostaDemo(
-  modo: "completo" | "sem-serie" | "api-antiga",
+  modo: "completo" | "sem-serie" | "api-antiga" | "sem-oitavo",
   autenticadoComoAdmin: boolean
 ) {
   const base = {
@@ -470,12 +549,30 @@ export function respostaDemo(
   return {
     ...base,
 
+    // Sem sessao de admin a API corta a lista nominal - de cada serie e da
+    // copia solta na raiz. Cortar so uma delas deixaria os nomes vazando pelo
+    // outro caminho, que e o tipo de descuido que o modo demo tem que mostrar.
     projetoDeVida:
       modo === "sem-serie"
         ? null
         : {
             ...PROJETO_DE_VIDA,
-            alunos: autenticadoComoAdmin ? PROJETO_DE_VIDA.alunos : null,
+
+            alunos: autenticadoComoAdmin
+              ? PROJETO_DE_VIDA.alunos
+              : null,
+
+            // Sem `series` e como responde um Apps Script publicado antes
+            // de o 8o ano entrar na tela. Acontece de verdade: o deploy do
+            // site e o "implantar" da planilha sao dois botoes diferentes, e
+            // a pagina tem que mostrar so o 9o ano em vez de quebrar.
+            series:
+              modo === "sem-oitavo"
+                ? undefined
+                : PROJETO_DE_VIDA.series.map((serie) => ({
+                    ...serie,
+                    alunos: autenticadoComoAdmin ? serie.alunos : null,
+                  })),
           },
   };
 }

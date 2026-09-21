@@ -492,6 +492,31 @@ body {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+/* Dois cards: e o que sobra quando a API publicada ainda nao manda o 8o ano. */
+.pdv-resumo-grid-2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+/* A borda transparente fica em todos os cards da faixa, inclusive no de fatia
+   que nao e clicavel: so no card selecionado ela mudaria a largura interna e
+   desalinharia o texto dos vizinhos. */
+.pdv-resumo-grid .summary-card {
+  border: 1px solid transparent;
+}
+
+.pdv-resumo-grid .summary-card:not(.summary-card-static):hover {
+  border-color: #bbb;
+}
+
+/* Os cards de serie escolhem o que aparece nos filtros e na tabela abaixo.
+   Sem marcar o escolhido, o conteudo da pagina inteira troca e nada na tela
+   diz de onde ele veio. */
+.pdv-resumo-grid .summary-card-selecionado,
+.pdv-resumo-grid .summary-card-selecionado:hover {
+  border-color: #222;
+  background: #fafafa;
+}
+
 .pdv-aviso {
   margin-top: 12px;
   margin-bottom: 0;

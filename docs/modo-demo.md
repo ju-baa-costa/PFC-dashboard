@@ -20,6 +20,7 @@ Não precisa de `VITE_API_URL`: nada é buscado na rede.
 | `1` | dados completos |
 | `sem-serie` | planilha sem a coluna de série (`projetoDeVida` volta `null`) |
 | `api-antiga` | Apps Script publicado antes do Projeto de Vida existir |
+| `sem-oitavo` | Apps Script publicado antes do 8º ano entrar na tela (a página mostra só o 9º) |
 
 ## Login
 
@@ -37,8 +38,10 @@ Qualquer senha entra. O usuário escolhe o papel:
 - escolas homônimas em cidades diferentes
 - supervisores nas três faixas de frequência
 - cidade com um único aluno no 9º ano, para conferir o singular na tela
+- cidade que só existe numa das séries (Votorantim não tem 8º ano), para
+  conferir que os chips trocam junto com o card de série
 - nomes acentuados, para conferir a ordem alfabética
-- alunos ativos sem série, que ficam de fora das contas do 9º ano
+- alunos ativos sem série, que ficam de fora das contas das duas séries
 
 Os números fecham entre si: as turmas somam as escolas, que somam as cidades,
 que somam o resumo. Dado de mentira que não fecha vira caça a bug inexistente

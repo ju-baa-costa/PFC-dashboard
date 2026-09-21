@@ -12,6 +12,7 @@
 //   VITE_MODO_DEMO=1           dados completos
 //   VITE_MODO_DEMO=sem-serie   planilha sem a coluna de serie
 //   VITE_MODO_DEMO=api-antiga  API publicada sem a secao do Projeto de Vida
+//   VITE_MODO_DEMO=sem-oitavo  API publicada antes de o 8o ano entrar na tela
 //
 // Ligado, a tela ganha uma tarja: numero inventado que passa por real e um
 // print dele numa reuniao e exatamente o tipo de erro silencioso que este
@@ -21,7 +22,11 @@
 // bundler, no build, nao o codigo rodando.
 // ---------------------------------------------------------------------------
 
-export type ModoDemo = "completo" | "sem-serie" | "api-antiga";
+export type ModoDemo =
+  | "completo"
+  | "sem-serie"
+  | "api-antiga"
+  | "sem-oitavo";
 
 // A comparacao e literal de proposito. O Vite troca import.meta.env por uma
 // constante no build, e so assim o Rollup consegue dobrar isto em `null` e
@@ -37,4 +42,6 @@ export const MODO_DEMO: ModoDemo | null =
       ? "sem-serie"
       : VALOR === "api-antiga"
         ? "api-antiga"
-        : null;
+        : VALOR === "sem-oitavo"
+          ? "sem-oitavo"
+          : null;

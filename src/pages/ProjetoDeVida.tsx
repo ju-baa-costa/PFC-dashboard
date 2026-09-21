@@ -24,6 +24,15 @@ interface AlunoProjetoDeVida {
   escola: string;
 }
 
+interface SerieProjetoDeVida {
+  ano: number;
+  noAno: number;
+  percentualDoPrograma: number | null;
+  cidades: CidadeProjetoDeVida[];
+  escolas: EscolaProjetoDeVida[];
+  alunos: AlunoProjetoDeVida[] | null;
+}
+
 interface DadosProjetoDeVida {
   ano: number;
   noAno: number;
@@ -34,11 +43,19 @@ interface DadosProjetoDeVida {
   cidades: CidadeProjetoDeVida[];
   escolas: EscolaProjetoDeVida[];
   alunos: AlunoProjetoDeVida[] | null;
+
+  // Ausente nas versoes da API anteriores ao 8o ano entrar na tela - ver
+  // seriesDaResposta.
+  series?: SerieProjetoDeVida[];
 }
 
 const SEM_DADO = "—";
 
 const TODAS = "todos";
+
+// Qual card ja vem escolhido ao abrir a pagina. O 9o ano e o motivo de a tela
+// existir; o 8o entrou depois, para planejar o ano seguinte.
+const ANO_PADRAO = 9;
 
 // new Date().getFullYear() usa o fuso do navegador; entre a meia-noite de
 // 31/12 no Brasil e a virada em UTC ele responde o ano errado, e o card diria
@@ -59,11 +76,33 @@ function chaveEscola(cidade: string, nome: string) {
   return `${cidade}|${nome}`;
 }
 
+// O Apps Script publicado pode ser mais velho que este front - o deploy do
+// site e o "implantar" da planilha sao dois botoes diferentes, apertados em
+// momentos diferentes. Sem `series`, a resposta antiga ainda traz o 9o ano
+// solto na raiz: a pagina mostra um card so em vez de quebrar.
+function seriesDaResposta(pdv: DadosProjetoDeVida): SerieProjetoDeVida[] {
+  if (pdv.series && pdv.series.length > 0) {
+    return pdv.series;
+  }
+
+  return [
+    {
+      ano: pdv.ano,
+      noAno: pdv.noAno,
+      percentualDoPrograma: pdv.percentualDoPrograma,
+      cidades: pdv.cidades,
+      escolas: pdv.escolas,
+      alunos: pdv.alunos,
+    },
+  ];
+}
+
 export default function ProjetoDeVida() {
   const { token, nome, papel } = useAuth();
   const { data, loading, atualizar } = useDashboard();
 
   const [modalAberto, setModalAberto] = useState(false);
+  const [anoSelecionado, setAnoSelecionado] = useState(ANO_PADRAO);
   const [cidadeSelecionada, setCidadeSelecionada] = useState(TODAS);
   const [escolaSelecionada, setEscolaSelecionada] = useState(TODAS);
 
@@ -94,7 +133,7 @@ export default function ProjetoDeVida() {
           <h3>Projeto de Vida</h3>
 
           <p className="section-card-legenda">
-            A lista do 9º ano está disponível apenas para contas de
+            A lista de alunos está disponível apenas para contas de
             administrador. Você entrou como {nome}.
           </p>
         </div>
@@ -118,7 +157,7 @@ export default function ProjetoDeVida() {
 
           <p className="section-card-legenda">
             {pdv === null
-              ? "Sem a coluna de série na planilha não é possível saber quem está no 9º ano."
+              ? "Sem a coluna de série na planilha não é possível saber quem está em cada ano."
               : "A versão publicada da API ainda não responde o Projeto de Vida."}
           </p>
         </div>
@@ -126,17 +165,27 @@ export default function ProjetoDeVida() {
     );
   }
 
-  const alunos = pdv.alunos ?? [];
+  const series = seriesDaResposta(pdv);
+
+  // O ano escolhido pode nao existir na resposta: a API antiga so traz o 9o, e
+  // o estado sobrevive a um refresh que mude a lista de series. Cair no padrao
+  // (e, na falta dele, na ultima serie) evita uma tela vazia sem explicacao.
+  const serie =
+    series.find((item) => item.ano === anoSelecionado) ??
+    series.find((item) => item.ano === ANO_PADRAO) ??
+    series[series.length - 1];
+
+  const alunos = serie.alunos ?? [];
 
   const escolasVisiveis =
     cidadeSelecionada === TODAS
-      ? pdv.escolas
-      : pdv.escolas.filter((escola) => escola.cidade === cidadeSelecionada);
+      ? serie.escolas
+      : serie.escolas.filter((escola) => escola.cidade === cidadeSelecionada);
 
   // Sem a cidade no rotulo, duas escolas homonimas viram dois chips iguais na
   // tela e nao da para saber qual e qual.
   const nomesRepetidos = new Set(
-    pdv.escolas
+    serie.escolas
       .map((escola) => escola.nome)
       .filter(
         (nome, indice, todos) => todos.indexOf(nome) !== indice
@@ -154,6 +203,15 @@ export default function ProjetoDeVida() {
     );
   });
 
+  // Trocar de serie sem limpar os filtros deixaria selecionada uma escola que
+  // talvez nem tenha aluno no outro ano, e a lista sairia vazia sem explicacao
+  // na tela - o mesmo motivo de selecionarCidade limpar a escola.
+  function selecionarAno(ano: number) {
+    setAnoSelecionado(ano);
+    setCidadeSelecionada(TODAS);
+    setEscolaSelecionada(TODAS);
+  }
+
   // Trocar de cidade sem limpar a escola deixaria selecionada uma escola de
   // outro município, e a lista sairia vazia sem explicação na tela.
   function selecionarCidade(cidade: string) {
@@ -167,29 +225,40 @@ export default function ProjetoDeVida() {
 
   return (
     <Layout onRefresh={atualizar}>
-      <div className="grid pdv-resumo-grid">
-        <SummaryCard
-          title={`No ${pdv.ano}º ano`}
-          value={pdv.noAno}
-          hint="Alunos ativos hoje"
-        />
-
-        <SummaryCard
-          title={`No ${pdv.ano}º ano em ${anoLetivoAtual() + 1}`}
-          value={pdv.proximoAno}
-          hint={`Projeção: os ${pdv.ano - 1}º anos ativos de hoje`}
-        />
+      <div
+        className={
+          series.length > 1
+            ? "grid pdv-resumo-grid"
+            : "grid pdv-resumo-grid pdv-resumo-grid-2"
+        }
+      >
+        {series.map((item) => (
+          <SummaryCard
+            key={item.ano}
+            title={`No ${item.ano}º ano`}
+            value={item.noAno}
+            selecionado={item.ano === serie.ano}
+            onClick={() => selecionarAno(item.ano)}
+          />
+        ))}
 
         <SummaryCard
           title="Fatia do programa"
           value={
-            pdv.percentualDoPrograma !== null
-              ? `${pdv.percentualDoPrograma}%`
+            serie.percentualDoPrograma !== null
+              ? `${serie.percentualDoPrograma}%`
               : SEM_DADO
           }
-          hint={`${pdv.noAno} de ${pdv.totalAtivos} alunos ativos`}
+          hint={`${serie.noAno} de ${pdv.totalAtivos} alunos ativos`}
         />
       </div>
+
+      {serie.ano === ANO_PADRAO - 1 && (
+        <p className="section-card-legenda pdv-aviso">
+          É o 9º ano de {anoLetivoAtual() + 1}, se ninguém repetir nem evadir:
+          projeção, não matrícula.
+        </p>
+      )}
 
       {pdv.alunosSemSerie > 0 && (
         <p className="section-card-legenda pdv-aviso">
@@ -215,7 +284,7 @@ export default function ProjetoDeVida() {
                 Todas
               </button>
 
-              {pdv.cidades.map((cidade) => (
+              {serie.cidades.map((cidade) => (
                 <button
                   type="button"
                   key={cidade.nome}
@@ -268,7 +337,7 @@ export default function ProjetoDeVida() {
       </div>
 
       <div className="section-card">
-        <h3>Alunos no {pdv.ano}º ano</h3>
+        <h3>Alunos no {serie.ano}º ano</h3>
 
         <p className="section-card-legenda">
           {alunosVisiveis.length === alunos.length
