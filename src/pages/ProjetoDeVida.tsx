@@ -57,18 +57,6 @@ const TODAS = "todos";
 // existir; o 8o entrou depois, para planejar o ano seguinte.
 const ANO_PADRAO = 9;
 
-// new Date().getFullYear() usa o fuso do navegador; entre a meia-noite de
-// 31/12 no Brasil e a virada em UTC ele responde o ano errado, e o card diria
-// "9º ano em 2027" no dia 1º de janeiro de 2027.
-function anoLetivoAtual() {
-  return Number(
-    new Intl.DateTimeFormat("en-CA", {
-      timeZone: "America/Sao_Paulo",
-      year: "numeric",
-    }).format(new Date())
-  );
-}
-
 // Nome de escola se repete entre municipios, entao a selecao guarda cidade e
 // nome juntos: filtrar so pelo nome faria a "EE Lobato" de uma cidade trazer
 // junto os alunos da homonima da outra.
@@ -252,13 +240,6 @@ export default function ProjetoDeVida() {
           hint={`${serie.noAno} de ${pdv.totalAtivos} alunos ativos`}
         />
       </div>
-
-      {serie.ano === ANO_PADRAO - 1 && (
-        <p className="section-card-legenda pdv-aviso">
-          É o 9º ano de {anoLetivoAtual() + 1}, se ninguém repetir nem evadir:
-          projeção, não matrícula.
-        </p>
-      )}
 
       {pdv.alunosSemSerie > 0 && (
         <p className="section-card-legenda pdv-aviso">

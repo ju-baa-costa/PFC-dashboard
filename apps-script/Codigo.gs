@@ -1608,9 +1608,9 @@ function montarDiagnosticoCursinho(
 
 const ANO_PROJETO_DE_VIDA = 9;
 
-// Da mais nova para a mais velha nao: a tela mostra os cards nesta ordem, e
-// 8o antes de 9o e como a escola fala.
-const ANOS_PROJETO_DE_VIDA = [8, 9];
+// A tela mostra os cards nesta ordem, e o 9o vem primeiro por ser o motivo de
+// a pagina existir - o 8o entrou depois, para planejar o ano seguinte.
+const ANOS_PROJETO_DE_VIDA = [9, 8];
 
 function ordenarPorNomePt(itens) {
   return itens.sort(

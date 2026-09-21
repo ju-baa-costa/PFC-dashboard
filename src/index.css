@@ -509,12 +509,25 @@ body {
 }
 
 /* Os cards de serie escolhem o que aparece nos filtros e na tabela abaixo.
-   Sem marcar o escolhido, o conteudo da pagina inteira troca e nada na tela
-   diz de onde ele veio. */
+   Preto e branco, igual ao .chip.active dos filtros de cidade e escola: e a
+   mesma pergunta ("qual esta selecionado?") e nao ha motivo para a resposta
+   ter duas linguagens visuais na mesma tela.
+
+   Uma borda so, que era como estava antes, some numa tela clara vista de
+   longe - e quando ela some, a tabela inteira trocou de conteudo sem nada
+   dizer por que. */
 .pdv-resumo-grid .summary-card-selecionado,
 .pdv-resumo-grid .summary-card-selecionado:hover {
+  background: #222;
   border-color: #222;
-  background: #fafafa;
+  color: white;
+}
+
+/* O hint nasce cinza para fundo branco. Nenhum card de serie usa hint hoje,
+   mas deixar 0.85rem de #555 sobre preto e uma armadilha a espera do
+   primeiro que usar. */
+.pdv-resumo-grid .summary-card-selecionado .summary-card-hint {
+  color: #ddd;
 }
 
 .pdv-aviso {

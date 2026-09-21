@@ -166,7 +166,8 @@ const PROJETO_DE_VIDA = {
   escolas: SERIE_NONO_ANO.escolas,
   alunos: SERIE_NONO_ANO.alunos,
 
-  series: [SERIE_OITAVO_ANO, SERIE_NONO_ANO],
+  // Na mesma ordem em que a API responde, que e a ordem dos cards na tela.
+  series: [SERIE_NONO_ANO, SERIE_OITAVO_ANO],
 };
 
 const TURMAS = [
