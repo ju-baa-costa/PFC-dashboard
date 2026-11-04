@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import Layout from "../components/Layout";
 import LoginModal from "../components/LoginModal";
 import { useDashboard } from "../hooks/useDashboard";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../hooks/useAuth";
 
 export default function TurmaDetalhe() {
   const { codigo } = useParams();

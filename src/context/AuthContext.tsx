@@ -1,34 +1,12 @@
-import {
-  createContext,
-  useContext,
-  useEffect,
-  useState,
-  type ReactNode,
-} from "react";
+import { useEffect, useState, type ReactNode } from "react";
+
 import { login as loginRequest } from "../services/api";
-
-interface AuthState {
-  token: string | null;
-  nome: string | null;
-  papel: string | null;
-  turmas: string[];
-}
-
-interface AuthContextValue extends AuthState {
-  login: (usuario: string, senha: string) => Promise<void>;
-  logout: () => void;
-}
-
-const ESTADO_VAZIO: AuthState = {
-  token: null,
-  nome: null,
-  papel: null,
-  turmas: [],
-};
-
-const STORAGE_KEY = "pfc_auth";
-
-const AuthContext = createContext<AuthContextValue | null>(null);
+import {
+  AuthContext,
+  ESTADO_VAZIO,
+  STORAGE_KEY,
+  type AuthState,
+} from "../hooks/useAuth";
 
 function lerEstadoSalvo(): AuthState {
   try {
@@ -72,14 +50,4 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       {children}
     </AuthContext.Provider>
   );
-}
-
-export function useAuth() {
-  const contexto = useContext(AuthContext);
-
-  if (!contexto) {
-    throw new Error("useAuth precisa estar dentro de um AuthProvider");
-  }
-
-  return contexto;
 }

@@ -4,7 +4,7 @@ import Layout from "../components/Layout";
 import LoginModal from "../components/LoginModal";
 import SummaryCard from "../components/SummaryCard";
 
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../hooks/useAuth";
 import { useDashboard } from "../hooks/useDashboard";
 
 interface CidadeProjetoDeVida {

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { getDashboardData } from "../services/api";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "./useAuth";
 
 export function useDashboard() {
   const { token } = useAuth();

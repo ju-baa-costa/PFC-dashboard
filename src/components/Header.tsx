@@ -6,7 +6,7 @@ import {
 
 import ReportButtons from "./ReportButtons";
 import LoginModal from "./LoginModal";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../hooks/useAuth";
 
 interface Props {
   onRefresh?: () => void;
