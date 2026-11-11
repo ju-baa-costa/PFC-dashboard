@@ -15,9 +15,11 @@ export default function Home() {
 
   if (loading) return <h1>Carregando...</h1>;
 
-  function gerarCompleto() {
-    const agregado = calcularAgregadoEntidades(data.cidades ?? []);
+  // Mesma conta do relatorio em PDF, para o numero da tela e o do relatorio
+  // nunca discordarem.
+  const agregado = calcularAgregadoEntidades(data.cidades ?? []);
 
+  function gerarCompleto() {
     gerarRelatorioPDF(
       "Relatório Completo - Dashboard Global",
       [
@@ -55,8 +57,6 @@ export default function Home() {
   }
 
   function gerarResumido() {
-    const agregado = calcularAgregadoEntidades(data.cidades ?? []);
-
     gerarRelatorioPDF(
       "Relatório Resumido - Dashboard Global",
       [
@@ -119,6 +119,25 @@ export default function Home() {
             />
           </div>
         </section>
+
+        <div className="home-totais">
+          <SummaryCard
+            title="Alunos ativos"
+            value={agregado.totalAlunosAtivos}
+          />
+
+          {/* Sem a coluna de vagas na planilha o agregado vem null; mostra "—"
+              em vez de um zero que pareceria "tudo lotado". */}
+          <SummaryCard
+            title="Vagas disponíveis"
+            value={agregado.totalVagasDisponiveis ?? "—"}
+            hint={
+              agregado.totalVagas > 0
+                ? `de ${agregado.totalVagas} vagas ofertadas`
+                : undefined
+            }
+          />
+        </div>
       </div>
     </Layout>
   );
