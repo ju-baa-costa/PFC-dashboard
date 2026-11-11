@@ -152,6 +152,19 @@ body {
   justify-content: center;
 }
 
+/* Totais de alunos ativos e vagas disponiveis: segunda linha da home, cada um
+   com metade da largura e centralizado como os cards da primeira linha. */
+.home-totais {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.home-totais .summary-card {
+  text-align: center;
+}
+
 /* Fica na mesma linha dos outros cards do resumo, ocupando duas colunas para
    caber os dois cards menores lado a lado. */
 .anos-finais-card {
@@ -203,6 +216,10 @@ body {
 
   .anos-finais-card {
     grid-column: auto;
+  }
+
+  .home-totais {
+    grid-template-columns: 1fr;
   }
 
   .anos-finais-grid {
